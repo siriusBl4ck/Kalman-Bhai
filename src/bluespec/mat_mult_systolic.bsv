@@ -1,4 +1,4 @@
-package sys_array;
+package mat_mult_systolic;
 
 `include "types.bsv"
 
@@ -6,8 +6,8 @@ import Vector::*;
 import pe::*;
 
 interface Ifc_mat_mult_systolic_3x3;
-    method Action feed_inp_stream(InpStreamType a_stream, InpStreamType b_stream);
-    method OutStreamType get_out_stream();
+    method Action feed_inp_stream(VecType a_stream, VecType b_stream);
+    method MatType get_out_stream();
 endinterface
 
 (* synthesize *)
@@ -58,7 +58,7 @@ module mat_mult_systolic_3x3(Ifc_mat_mult_systolic_3x3);
         pe_22.putB(lv_pe22_b);
     endrule
 
-    method Action feed_inp_stream(InpStreamType a_stream, InpStreamType b_stream);
+    method Action feed_inp_stream(VecType a_stream, VecType b_stream);
         SysType lv_a_0 = a_stream[1 * INP_LEN - 1 : 0 * INP_LEN];
         SysType lv_a_1 = a_stream[2 * INP_LEN - 1 : 1 * INP_LEN];
         SysType lv_a_2 = a_stream[3 * INP_LEN - 1 : 2 * INP_LEN];
@@ -76,8 +76,8 @@ module mat_mult_systolic_3x3(Ifc_mat_mult_systolic_3x3);
         pe_02.putB(lv_b_2);
     endmethod
 
-    method OutStreamType get_out_stream();
-        OutStreamType out_stream = {pe_00.getC(), pe_01.getC(), pe_02.getC(),
+    method MatType get_out_stream();
+        MatType out_stream = {pe_00.getC(), pe_01.getC(), pe_02.getC(),
                                     pe_10.getC(), pe_11.getC(), pe_12.getC(),
                                     pe_20.getC(), pe_21.getC(), pe_22.getC()};
         return out_stream;
