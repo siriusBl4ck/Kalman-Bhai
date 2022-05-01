@@ -12,11 +12,18 @@ endinterface
 
 (* synthesize *)
 module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
-    Reg#(SysType) matA[MAT_DIM][MAT_DIM] <- mkReg(0);
-    Reg#(SysType) matA_inv[MAT_DIM][MAT_DIM] <- mkReg(0);
+    Reg#(SysType) matA[MAT_DIM][MAT_DIM];
+    Reg#(SysType) matA_inv[MAT_DIM][MAT_DIM];
+
+    for (int i = 0; i < MAT_DIM; i = i + 1) begin
+        for (int j = 0; j < MAT_DIM; j = j + 1) begin
+            matA[i][j] <- mkReg(0);
+            matA_inv[i][j] <- mkReg(0);
+        end
+    end
+
     Reg#(Bit#(1)) rdy <- mkReg(1);
     Reg#(int) cntr <- mkReg(0);
-    Ifc_ratio_accumulate rta[MAT_DIM - 1] <- mk_ratio_accumulate;
 
     rule rl_cntr (rdy == 1'b0);
         cntr <= cntr + 1;
@@ -49,17 +56,17 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
     method Action put(MatType A);
         matA <= unpack(pack(A));
 
-        matA_inv[0][0] <= 1'b1;
-        matA_inv[0][1] <= 1'b0;
-        matA_inv[0][2] <= 1'b0;
-        matA_inv[1][0] <= 1'b0;
-        matA_inv[1][1] <= 1'b1;
-        matA_inv[1][2] <= 1'b0;
-        matA_inv[2][0] <= 1'b0;
-        matA_inv[2][1] <= 1'b0;
-        matA_inv[2][2] <= 1'b1;
+        //initialize as identity matrix
+        for (int i = 0; i < MAT_DIM; i = i + 1) begin
+            for (int j = 0; j < MAT_DIM; j = j + 1) begin
+                if (i == j) matA_inv[i][j] <= 1'b1;
+                else matA_inv[i][j] <= 1'b0;
+            end
+        end
 
         rdy <= 1'b0;
+
+        //init counter
         cntr <= 0;
     endmethod
 

@@ -1,0 +1,13 @@
+#-----------------------------------------------------------
+# xsim v2020.1 (64-bit)
+# SW Build 2902540 on Wed May 27 19:54:35 MDT 2020
+# IP Build 2902112 on Wed May 27 22:43:36 MDT 2020
+# Start of session at: Sun May  1 12:27:37 2022
+# Process ID: 51769
+# Current directory: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec
+# Command line: xsim -mode tcl -source {xsim.dir/a.out.xsim/xsim_script.tcl}
+# Log file: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/xsim.log
+# Journal file: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/xsim.jou
+#-----------------------------------------------------------
+source xsim.dir/a.out.xsim/xsim_script.tcl
+source a.out.xsim.tcl

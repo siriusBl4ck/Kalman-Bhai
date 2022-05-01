@@ -22,9 +22,11 @@ module mk_pe(Ifc_pe);
     Reg#(SysType) rg_out_b <- mkReg(unpack(0));
     Reg#(SysType) rg_out_c <- mkReg(unpack(0));
 
-    rule mac (wr_valid_a && wr_valid_b);
-        //TODO: Replace with an efficient MAC architecture
-        rg_out_c <= wr_in_a * wr_in_b + rg_out_c;
+    rule mac (wr_valid_a == 1'b1 && wr_valid_b == 1'b1);
+        //TODO: Replace with an efficient MAC architecture ✅
+        $display($time, " [MAC] rule reached, performing compute\n");
+        SysType lv_mult = fxptTruncate(fxptMult(wr_in_a, wr_in_b));
+        rg_out_c <= fxptTruncate(fxptAdd(lv_mult, rg_out_c));
     endrule
 
     rule propagate;
@@ -33,11 +35,13 @@ module mk_pe(Ifc_pe);
     endrule
 
     method Action putA(SysType in_a);
+        $display($time, " [MAC] method reached, putA\n");
         wr_in_a <= in_a;
         wr_valid_a <= 1'b1;
     endmethod
 
     method Action putB(SysType in_b);
+        $display($time, " [MAC] method reached, putA\n");
         wr_in_b <= in_b;
         wr_valid_b <= 1'b1;
     endmethod
