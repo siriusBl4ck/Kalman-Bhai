@@ -1,19 +1,20 @@
 Vivado Simulator 2020.1
 Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
-Running: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/tools/Xilinx/Vivado/2020.1/bin/unwrapped/lnx64.o/xelab -v 0 -debug typical -s a.out.xsim -prj /tmp/xsim.prj.svlhgH -sourcelibdir verilog -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Libraries -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog -sourcelibext .v -d TOP=mk_tb_pe -t work_mk_tb_pe.main 
+Running: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/tools/Xilinx/Vivado/2020.1/bin/unwrapped/lnx64.o/xelab -v 0 -debug typical -s a.out.xsim -prj /tmp/xsim.prj.JN1G9m -sourcelibdir verilog -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Libraries -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog -sourcelibext .v -d TOP=tb_mat_mult -t work_tb_mat_mult.main 
 Multi-threading is on. Using 10 slave threads.
-INFO: [VRFC 10-2263] Analyzing Verilog file "/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog/main.v" into library work_mk_tb_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog/main.v" into library work_tb_mat_mult
 INFO: [VRFC 10-311] analyzing module main
-INFO: [VRFC 10-2263] Analyzing Verilog file "/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/verilog/mk_tb_pe.v" into library work_mk_tb_pe
-INFO: [VRFC 10-311] analyzing module mk_tb_pe
-WARNING: [VRFC 10-3609] overwriting previous definition of module 'mk_tb_pe' [/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/verilog/mk_tb_pe.v:29]
+INFO: [VRFC 10-2263] Analyzing Verilog file "/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/verilog/tb_mat_mult.v" into library work_tb_mat_mult
+INFO: [VRFC 10-311] analyzing module tb_mat_mult
+WARNING: [VRFC 10-3609] overwriting previous definition of module 'tb_mat_mult' [/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/Academics/EE5332/Project/Kalman-Bhai/src/bluespec/verilog/tb_mat_mult.v:29]
 Starting static elaboration
 Pass Through NonSizing Optimizer
 Completed static elaboration
 Starting simulation data flow analysis
 Completed simulation data flow analysis
 Time Resolution for simulation is 1ps
-Compiling module work_mk_tb_pe.mk_pe
-Compiling module work_mk_tb_pe.mk_tb_pe
-Compiling module work_mk_tb_pe.main
+Compiling module work_tb_mat_mult.mk_pe
+Compiling module work_tb_mat_mult.mat_mult_systolic
+Compiling module work_tb_mat_mult.tb_mat_mult
+Compiling module work_tb_mat_mult.main
 Built simulation snapshot a.out.xsim

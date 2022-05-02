@@ -3,6 +3,7 @@ package mat_mult_systolic;
 `include "types.bsv"
 
 import pe::*;
+import FixedPoint::*;
 
 interface Ifc_mat_mult_systolic;
     method Action feed_inp_stream(VecType a_stream, VecType b_stream);
@@ -41,6 +42,12 @@ module mat_mult_systolic(Ifc_mat_mult_systolic);
     rule stage0_latch;
         if (wr_inp_rdy == 1'b1) begin
             for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+                $display($time, " [MULT] [stage0] latching A[%d] ", i);
+                fxptWrite(5, wr_inp_a[i]);
+                $display("\n");
+                $display($time, " [MULT] [stage0] latching B[%d] ", i);
+                fxptWrite(5, wr_inp_b[i]);
+                $display("\n");
                 rg_inp_a[i] <= wr_inp_a[i];
                 rg_inp_b[i] <= wr_inp_b[i];
             end
@@ -84,12 +91,13 @@ module mat_mult_systolic(Ifc_mat_mult_systolic);
     endrule
 
     method Action feed_inp_stream(VecType a_stream, VecType b_stream);
+        $display($time, " [MULT] method feed_inp_stream reached");
         for (int i = 0; i < `MAT_DIM; i = i + 1) begin
             wr_inp_a[i] <= unpack(a_stream[(i+1) * `INP_LEN - 1 : i * `INP_LEN]);
         end
 
         for (int j = 0; j < `MAT_DIM; j = j + 1) begin
-            wr_inp_b[j] <= unpack(a_stream[(j+1) * `INP_LEN - 1 : j * `INP_LEN]);
+            wr_inp_b[j] <= unpack(b_stream[(j+1) * `INP_LEN - 1 : j * `INP_LEN]);
         end
 
         wr_inp_rdy <= 1'b1;
