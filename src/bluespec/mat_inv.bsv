@@ -15,10 +15,10 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
     Vector#(`MAT_DIM, Vector#(`MAT_DIM, Reg#(SysType))) matA <- replicateM(replicateM(mkReg(unpack(0))));
     Vector#(`MAT_DIM, Vector#(`MAT_DIM, Reg#(SysType))) matA_inv <- replicateM(replicateM(mkReg(unpack(0))));
 
-    Reg#(Bit#(1)) rdy <- mkReg(1);
-    Reg#(int) cntr <- mkReg(0);
+    Reg#(Bool) rdy <- mkReg(True);
+    Reg#(int) cntr <- mkReg(0);///////////////////
 
-    rule rl_cntr (rdy == 1'b0);
+    rule rl_cntr (!rdy);
         cntr <= cntr + 1;
     endrule
 
@@ -67,7 +67,7 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
         return rdy;
     endmethod
 
-    method MatType get();
+    method MatType get() if (rdy);
         MatType lv_a_inv = unpack(pack(a_inv));
         return lv_a_inv;
     endmethod

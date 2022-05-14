@@ -188,10 +188,6 @@ void __attribute__ ((noinline)) inversemat(DTYPE *res, int res_dimensions,
 	int dimensions = res_dimensions;
 
 	DTYPE tempmat[MEASUREMENT_DIM][2*MEASUREMENT_DIM];
-	/*DTYPE** tempmat = (DTYPE**)malloc(dimensions * sizeof(DTYPE*));
-    for (int i = 0; i < dimensions; i++)
-        tempmat[i] = (DTYPE*)malloc(2*dimensions * sizeof(DTYPE));
-	*/
 
 	//printf("%ld", sizeof(tempmat)/sizeof(DTYPE));
 
