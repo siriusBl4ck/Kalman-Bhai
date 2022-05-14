@@ -12,15 +12,8 @@ endinterface
 
 (* synthesize *)
 module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
-    Reg#(SysType) matA[MAT_DIM][MAT_DIM];
-    Reg#(SysType) matA_inv[MAT_DIM][MAT_DIM];
-
-    for (int i = 0; i < MAT_DIM; i = i + 1) begin
-        for (int j = 0; j < MAT_DIM; j = j + 1) begin
-            matA[i][j] <- mkReg(0);
-            matA_inv[i][j] <- mkReg(0);
-        end
-    end
+    Vector#(`MAT_DIM, Vector#(`MAT_DIM, Reg#(SysType))) matA <- replicateM(replicateM(mkReg(unpack(0))));
+    Vector#(`MAT_DIM, Vector#(`MAT_DIM, Reg#(SysType))) matA_inv <- replicateM(replicateM(mkReg(unpack(0))));
 
     Reg#(Bit#(1)) rdy <- mkReg(1);
     Reg#(int) cntr <- mkReg(0);

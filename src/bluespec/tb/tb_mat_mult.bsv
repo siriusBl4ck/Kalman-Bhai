@@ -1,6 +1,6 @@
 package tb_mat_mult;
 
-`include "src/types.bsv"
+`include "types.bsv"
 
 import FixedPoint::*;
 import mat_mult_systolic::*;
@@ -15,10 +15,11 @@ import mat_mult_systolic::*;
 (* synthesize *)
 module tb_mat_mult(Empty);
     Ifc_mat_mult_systolic myMult <- mat_mult_systolic;
+    
     Reg#(VecType) inp_Astream <- mkReg(unpack(0));
     Reg#(VecType) inp_Bstream <- mkReg(unpack(0));
     Reg#(MatType) out_stream <- mkReg(unpack(0));
-    Reg#(Bit#(4)) rg_cntr <- mkReg(0);
+    Reg#(int) rg_cntr <- mkReg(0);
 
     SysType lv_mat_A[`MAT_DIM][`MAT_DIM];
     SysType lv_mat_B[`MAT_DIM][`MAT_DIM];
@@ -52,7 +53,8 @@ module tb_mat_mult(Empty);
     endrule
 
     rule feed_stream;
-        if (rg_cntr >= 1 && rg_cntr <= 4) myMult.feed_inp_stream(inp_Astream, inp_Bstream);
+        if (rg_cntr >= 1 && rg_cntr <= 5) 
+            myMult.feed_inp_stream(inp_Astream, inp_Bstream);
         
         if (rg_cntr >= 1) begin
             //get the result back
@@ -61,17 +63,17 @@ module tb_mat_mult(Empty);
 
             SysType c[3][3];
 
-            c[0][0] = unpack(output_mat[`INP_LEN - 1 : 0]);
-            c[0][1] = unpack(output_mat[2 * `INP_LEN - 1 : `INP_LEN]);
-            c[0][2] = unpack(output_mat[3 * `INP_LEN - 1 : 2 * `INP_LEN]);
+            c[0][0] = output_mat[0][0];
+            c[0][1] = output_mat[0][1];
+            c[0][2] = output_mat[0][2];
 
-            c[1][0] = unpack(output_mat[4 * `INP_LEN - 1 : 3 * `INP_LEN]);
-            c[1][1] = unpack(output_mat[5 * `INP_LEN - 1 : 4 * `INP_LEN]);
-            c[1][2] = unpack(output_mat[6 * `INP_LEN - 1 : 5 * `INP_LEN]);
+            c[1][0] = output_mat[1][0];
+            c[1][1] = output_mat[1][1];
+            c[1][2] = output_mat[1][2];
 
-            c[2][0] = unpack(output_mat[7 * `INP_LEN - 1 : 6 * `INP_LEN]);
-            c[2][1] = unpack(output_mat[8 * `INP_LEN - 1 : 7 * `INP_LEN]);
-            c[2][2] = unpack(output_mat[9 * `INP_LEN - 1 : 8 * `INP_LEN]);
+            c[2][0] = output_mat[2][0];
+            c[2][1] = output_mat[2][1];
+            c[2][2] = output_mat[2][2];
 
             $display($time, " [systole]\n");
 
@@ -100,6 +102,11 @@ module tb_mat_mult(Empty);
             a1 = lv_mat_A[0][0];
             
             b1 = lv_mat_B[0][0];
+            $display("\na1:");
+            fxptWrite(5, a1);
+            $display("\nb1:");
+            fxptWrite(5, b1);
+            $display("\n");
         end
 
         else if (rg_cntr == 1) begin
@@ -109,6 +116,17 @@ module tb_mat_mult(Empty);
             
             b1 = lv_mat_B[1][0];
             b2 = lv_mat_B[0][1];
+
+            $display("\na1:");
+            fxptWrite(5, a1);
+            $display("\nb1:");
+            fxptWrite(5, b1);
+
+            $display("\na2:");
+            fxptWrite(5, a2);
+            $display("\nb2:");
+            fxptWrite(5, b2);
+            $display("\n");
         end
 
         else if (rg_cntr == 2) begin
@@ -136,10 +154,18 @@ module tb_mat_mult(Empty);
             a3 = lv_mat_A[2][2];
             
             b3 = lv_mat_B[2][2];
+            $display("\na3:");
+            fxptWrite(5, a3);
+            $display("\nb3:");
+            fxptWrite(5, b3);
+            $display("\n");
         end
 
-        inp_Astream <= {pack(a1), pack(a2), pack(a3)};
-        inp_Bstream <= {pack(b1), pack(b2), pack(b3)};
+        VecType inp_A = unpack({pack(a3), pack(a2), pack(a1)});
+        VecType inp_B = unpack({pack(b3), pack(b2), pack(b1)});
+
+        inp_Astream <= inp_A;
+        inp_Bstream <= inp_B;
     endrule
 endmodule
 
