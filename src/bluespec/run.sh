@@ -8,6 +8,6 @@ else
     bsc -vdir verilog -e tb_mat_mult -u verilog/tb_mat_mult.v
     echo "************"
     echo "SIMULATION_START"
-    ./a.out
+    ./a.out >> logs/test.log
     echo "SIMULATION_END"
 fi

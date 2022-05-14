@@ -1,6 +1,6 @@
 Vivado Simulator 2020.1
 Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
-Running: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/tools/Xilinx/Vivado/2020.1/bin/unwrapped/lnx64.o/xelab -v 0 -debug typical -s a.out.xsim -prj /tmp/xsim.prj.JN1G9m -sourcelibdir verilog -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Libraries -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog -sourcelibext .v -d TOP=tb_mat_mult -t work_tb_mat_mult.main 
+Running: /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/tools/Xilinx/Vivado/2020.1/bin/unwrapped/lnx64.o/xelab -v 0 -debug typical -s a.out.xsim -prj /tmp/xsim.prj.HVGyuq -sourcelibdir verilog -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Libraries -sourcelibdir /mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog -sourcelibext .v -d TOP=tb_mat_mult -t work_tb_mat_mult.main 
 Multi-threading is on. Using 10 slave threads.
 INFO: [VRFC 10-2263] Analyzing Verilog file "/mnt/5a853c24-31e3-4d80-9826-512f6bd995e7/saurav/siriusBl4ck/EE_Core/BlueSpec/bsc/inst/lib/Verilog/main.v" into library work_tb_mat_mult
 INFO: [VRFC 10-311] analyzing module main
