@@ -3,7 +3,7 @@ package tb_mat_inv;
 `include "types.bsv"
 
 import FixedPoint::*;
-import mat_inv_gaussian_3x3::*;
+import mat_inv::*;
 
 (*synthesize*)
 module mkTb_mat_inv(Empty);
@@ -37,28 +37,28 @@ module mkTb_mat_inv(Empty);
 		stage <= 2;	
 	endrule
 
-	rule stg1 (stage==2);
+	rule stg2 (stage==2);
 		let z <- myInv.get();
 		inp <= z;
 
-		for(int i=0; i<`MAT_DIM; i++)
-			for(int j=0; j<`MAT_DIM; j++)
+		for(int i=0; i<`MAT_DIM; i = i + 1)
+			for(int j=0; j<`MAT_DIM; j = j + 1)
 				fxptWrite(5, inp[i][j]);
 		stage <= 3;
 	endrule
 
 	rule init2 (stage==3);
-		$display("---------")
+		$display("---------");
 		myInv.put(inp);
 		stage <= 4;
 	endrule
 
-	rule stg1 (stage==2);
+	rule stg3 (stage==2);
 		let z <- myInv.get();
 		inp <= z;
 
-		for(int i=0; i<`MAT_DIM; i++)
-			for(int j=0; j<`MAT_DIM; j++)
+		for(int i=0; i<`MAT_DIM; i = i + 1)
+			for(int j=0; j<`MAT_DIM; j = j + 1)
 				fxptWrite(z[i][j]);
 		$finish;
 	endrule
