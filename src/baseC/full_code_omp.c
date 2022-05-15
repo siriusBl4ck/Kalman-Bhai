@@ -392,15 +392,36 @@ void __attribute__ ((noinline)) covarianceUpdate(DTYPE *Kk, DTYPE *H, DTYPE *Pk)
 
 void __attribute__ ((noinline)) kalmanIterate(DTYPE *xk, DTYPE *uk, DTYPE *F, DTYPE *B, DTYPE *Pk, DTYPE *Q, DTYPE *yk, DTYPE *zk, DTYPE *H, DTYPE *Kk, DTYPE *R) 
 {
+	#pragma omp task depend (out:Kk)
+	{
+	covariancePredictor(Pk, F, Q);
+    kalmangainCalculator(Pk, H, R, Kk);
+	}
+
+	#pragma omp task depend(out:xk)
+	{
 	statePredictor(xk,	uk,	F, B);
 	measurementResidual(zk, H, xk, yk);
-	
-	covariancePredictor(Pk, F, Q);
+	}
 
-    
-    kalmangainCalculator(Pk, H, R, Kk);
+
+	#pragma omp taskwait
+	{
 	stateUpdate(xk, Kk, yk);
 	covarianceUpdate(Kk, H, Pk);
+
+	printf("xk\n");
+	for (int i=0; i<xk_dim; i++)
+		printf("%f ", xk[i]);
+	
+	printf("\nPk\n");
+	for(int i=0; i<Pk_noRows; i++) {
+		for(int j=0; j<Pk_noColumns; j++)
+			printf("%f ", Pk[i*Pk_noColumns + j]);
+		
+		printf("\n");
+	}
+	}
 }
 
 
