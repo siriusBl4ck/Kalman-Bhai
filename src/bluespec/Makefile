@@ -16,10 +16,12 @@ pe:
 	./a.out
 
 mat_inv:
-	@echo "Compiling tb_mat_inv.bsv..."
-	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_mat_inv.bsv
-	bsc -vdir verilog -e mkTb_mat_inv -u verilog/mkTb_mat_inv.v 
+	@echo "Compiling tb_new_mat_inv.bsv..."
+	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_new_mat_inv.bsv
+	bsc -vdir verilog -e mkTb_new_mat_inv -u verilog/mkTb_new_mat_inv.v 
 	./a.out
 
 clean:
 	rm verilog/* bsv_build/* a.out
+	rm -rf web* xsim* xel* .Xil
+	rm *.tcl *.wdb
