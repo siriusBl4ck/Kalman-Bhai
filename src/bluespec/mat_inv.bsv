@@ -1,12 +1,12 @@
 package mat_inv;
 
-`include "types.bsv";
+`include "types.bsv"
 
-import ratio_accumulate::*;
+//import ratio_accumulate::*;
 
 interface Ifc_mat_inv_gaussian;
-    method Action put(MatType A);
-    method Bit#(1) isRdy();
+    method Action put(MatType matrixA);
+    method Bool isRdy();
     method MatType get();
 endinterface
 
@@ -44,28 +44,28 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
                     a_inv[k][l] <= fxptTruncate(fxptQuot(a_inv[k][l], a[k][k]));
                 end
             end
-            rdy <= 1'b1;
+            rdy <= True;
         end
     endrule
 
-    method Action put(MatType A);
-        matA <= unpack(pack(A));
+    method Action put(MatType matrixA);
+        matA <= unpack(pack(matrixA));
 
         //initialize as identity matrix
-        for (int i = 0; i < MAT_DIM; i = i + 1) begin
-            for (int j = 0; j < MAT_DIM; j = j + 1) begin
+        for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+            for (int j = 0; j < `MAT_DIM; j = j + 1) begin
                 if (i == j) matA_inv[i][j] <= 1'b1;
                 else matA_inv[i][j] <= 1'b0;
             end
         end
 
-        rdy <= 1'b0;
+        rdy <= False;
 
         //init counter
         cntr <= 0;
     endmethod
 
-    method Bit#(1) isRdy();
+    method Bool isRdy();
         return rdy;
     endmethod
 

@@ -37,12 +37,12 @@ module mkTb_mat_inv(Empty);
 		stage <= 2;	
 	endrule
 
-	rule stg2 (stage==2);
+	rule stgx (stage==2);
 		let z <- myInv.get();
 		inp <= z;
 
-		for(int i=0; i<`MAT_DIM; i = i + 1)
-			for(int j=0; j<`MAT_DIM; j = j + 1)
+		for(int i=0; i<`MAT_DIM; i=i+1)
+			for(int j=0; j<`MAT_DIM; j=j+1)
 				fxptWrite(5, inp[i][j]);
 		stage <= 3;
 	endrule
@@ -53,12 +53,12 @@ module mkTb_mat_inv(Empty);
 		stage <= 4;
 	endrule
 
-	rule stg3 (stage==2);
+	rule stg2 (stage==2);
 		let z <- myInv.get();
 		inp <= z;
 
-		for(int i=0; i<`MAT_DIM; i = i + 1)
-			for(int j=0; j<`MAT_DIM; j = j + 1)
+		for(int i=0; i<`MAT_DIM; i=i+1)
+			for(int j=0; j<`MAT_DIM; j=j+1)
 				fxptWrite(z[i][j]);
 		$finish;
 	endrule
