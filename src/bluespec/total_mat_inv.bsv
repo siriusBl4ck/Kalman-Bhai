@@ -180,9 +180,6 @@ module mk_mat_inv(Ifc_mat_inv);
             end
 
             a_inv <= tmp_A_inv;
-        end
-
-        if (c == `MAT_DIM + 1) begin
             inv_rdy <= True;
             a_valid <= False;
         end

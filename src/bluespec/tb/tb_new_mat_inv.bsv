@@ -38,7 +38,7 @@ module mkTb_new_mat_inv(Empty);
 
     rule rl_test;
         if (cntr == 0) begin
-            myInv.put(mymat2);
+            myInv.put(mymat1);
         end
     endrule
 
