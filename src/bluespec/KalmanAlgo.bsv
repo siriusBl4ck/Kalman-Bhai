@@ -15,39 +15,55 @@ endinterface
 
 (*synthesize*)
 module mkKalman(Kalman_Ifc);
-	
-
+	// To put a constraint on resources only 2 vector dot modules are needed
 	Vector_Ifc#(SysType) vdot1 <- mkVectorDot, vdot2 <- mkVectorDot;
+	Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
 	
-	Reg#(VecTypeSD) xk <- mkReg(defaultValue);
-	Reg#(VecTypeMD) yk <- mkReg(defaultValue);
-	Reg#(VecTypeMD) zk <- mkReg(defaultValue);
-	Reg#(MatTypeSD) Pk <- mkReg(defaultValue);
+	VecTypeSD xk <- replicateM(mkReg(defaultValue));
+	VecTypeMD yk <- replicateM(mkReg(defaultValue));
+	VecTypeMD zk <- replicateM(mkReg(defaultValue));
+	MatTypeSD Pk <- replicateM(mkReg(defaultValue));
+
+	// counter (cntr) can be reduced easily and only 6 are needed
 
 	//State predictor vars
-	Vector#(`STATE_DIM, Reg#(SysType)) M <- replicateM(mkReg(defaultValue)), N <- replicateM(mkReg(defaultValue));
-
-	Reg#(int) SPa_cntri <- mkReg(0), SPa_cntrj <- mkReg(0), SP2a <- mkReg(0), SP2b <- mkReg(0); /// to be reduced
+	VecTypeSD M <- replicateM(mkReg(defaultValue)), N <- replicateM(mkReg(defaultValue));
+	Reg#(int) vd1_cntr
+	Reg#(int) SP1a_cntri <- mkReg(0), SP1a_cntrj <- mkReg(0), SP1b_cntri <- mkReg(0), SP1b_cntrj <- mkReg(0), SP2a <- mkReg(0), SP2b <- mkReg(0); /// to be reduced
 	
-	Reg#(Bool) enable_SP1a <- mkReg(False);
+	Reg#(Bool) enable_SP1a <- mkReg(False), enable_storeM <- mkReg(False), enable_SP1b <- mkReg(False), enable_storeN <- mkReg(False);
+	Reg#(Bool) enable_SP2a <- mkReg(False), enable_SP2b <- mkReg(False);
 
+
+	// Measurement Residual
+	Reg#(Bool) enable_MR1 <- mkReg(False), enable_MR2 <- mkReg(False), enable_SUa <- mkReg(False);
+	Reg#(int) MR1_cntri <- mkReg(0), MR1_cntrj <- mkReg(0), MR2_cntr <- mkReg(0); //to be reduced
+	Reg#(VecType) yk <- mkReg(defaultValue);
+	Reg#(Bool) zk_valid <- mkReg(False);
+
+	//State update vars
+	Reg#(int) SU_cntri <- mkReg(0), SU_cntrj <- mkReg(0), SU2_cntr <- mkReg(0);
+
+
+	// State Predictor (SP) rules
+	// This rule is using vector dot product module to compute for matrix*vector
 	rule state_predictor1a (enable_SP1a);
-		vdot1.puta(F[SPa_cntri][SPa_cntrj]);
-		vdot1.putb(xk[SPa_cntrj]);
+		vdot1.puta(F[SP1a_cntri][SP1a_cntrj]);
+		vdot1.putb(xk[SP1a_cntrj]);
 		enable_storeM <= True;
 
-		if (SPa_cntrj == `STATE_DIM-1) begin
-			SPa_cntrj <= 0;
+		if (SP1a_cntrj == `STATE_DIM-1) begin
+			SP1a_cntrj <= 0;
 			vdot1.end_value(True);
-			if (SPa_cntri == `STATE_DIM-1) begin
-				SPa_cntri <= 0;
+			if (SP1a_cntri == `STATE_DIM-1) begin
+				SP1a_cntri <= 0;
 				enable_SP1a <= False;
 			end 
 			else
-				SPa_cntri <= SPa_cntri+1;
+				SP1a_cntri <= SP1a_cntri+1;
 		end 
 		else begin
-			SPa_cntrj <= SPa_cntrj+1;
+			SP1a_cntrj <= SP1a_cntrj+1;
 			vdot1.end_value(False);
 		end 
 	endrule
@@ -66,37 +82,37 @@ module mkKalman(Kalman_Ifc);
 	endrule
 
 	rule state_predictor1b (enable_SP1b);
-		vdot2.puta(B[SPb_cntri][SPb_cntrj]);
-		vdot2.putb(uk[SPb_cntrj]);
+		vdot2.puta(B[SP1b_cntri][SP1b_cntrj]);
+		vdot2.putb(uk[SP1b_cntrj]);
 		enable_storeN <= True;
 
-		if (SPb_cntrj == `INPUT_DIM-1) begin
-			SPb_cntrj <= 0;
+		if (SP1b_cntrj == `INPUT_DIM-1) begin
+			SP1b_cntrj <= 0;
 			vdot2.end_value(True);
-			if (SPb_cntri == `STATE_DIM-1) begin
-				SPb_cntri <= 0;
+			if (SP1b_cntri == `STATE_DIM-1) begin
+				SP1b_cntri <= 0;
 				enable_SP1b <= False;
 			end 
 			else
-				SPb_cntri <= SPb_cntri+1;
+				SP1b_cntri <= SP1b_cntri+1;
 		end 
 		else begin
-			SPb_cntrj <= SPb_cntrj+1;
+			SP1b_cntrj <= SP1b_cntrj+1;
 			vdot2.end_value(False);
 		end 
 	endrule
 	
 	rule store_N (enable_storeN);
 		let zb <- vdot2.dot_result;
-		N[SP2b] <= z;
+		N[SP2b_cntr] <= z;
 		
-		if (SP2b == `STATE_DIM-1) {
-			SP2b <= 0;
+		if (SP2b_cntr == `STATE_DIM-1) {
+			SP2b_cnr <= 0;
 			enable_SP2b <= True;
 			enable_storeN <= False;
 		}
 		else
-			SP2b <= SP2b+1;
+			SP2b_cntr <= SP2b_cntr+1;
 	endrule
 
 	rule state_predictor2 (enable_SP2a && enable_SP2b);
@@ -108,47 +124,43 @@ module mkKalman(Kalman_Ifc);
 		enable_MR1 <= True;
 	endrule
 
-	
-	// Measurement Residual
-	Reg#(Bool) enable_MR1 <- mkReg(False);
-	Reg#(int) MR_cntri <- mkReg(0), MR_cntrj <- mkReg(0), MR2 <- mkReg(0);
-	Reg#(VecType) yk <- mkReg(defaultValue);
 
+	// Measurement Residual rules
 	rule measurement_residual1 (enable_MR1);
-		vdot1.puta(H[MR_cntri][MR_cntrj]);
-		vdot1.putb(xk[MR_cntrj]);
+		vdot1.puta(H[MR1_cntri][MR1_cntrj]);
+		vdot1.putb(xk[MR1_cntrj]);
 		enable_storeE <= True;
 
-		if (MR_cntrj == `STATE_DIM-1) begin
-			MR_cntrj <= 0;
+		if (MR1_cntrj == `STATE_DIM-1) begin
+			MR1_cntrj <= 0;
 			vdot1.end_value(True);
-			if (MR_cntri == `MEASUREMENT_DIM-1) begin
-				MR_cntri <= 0;
+			if (MR1_cntri == `MEASUREMENT_DIM-1) begin
+				MR1_cntri <= 0;
 				enable_MR1 <= False;
 			end
 			else
-				MR_cntri <= MR_cntri+1;
+				MR1_cntri <= MR1_cntri+1;
 		end 
 		else begin
-			MR_cntrj <= MR_cntrj+1;
+			MR1_cntrj <= MR1_cntrj+1;
 			vdot1.end_value(False);
 		end
 	endrule
 
 	rule store_E (enable_storeE);
 		let ze <- vdot1.dot_result;
-		E[MR2] <= ze;
+		E[MR2_cntr] <= ze;
 
-		if (MR2 == `MEASUREMENT_DIM-1) begin
-			MR2 <= 0;
+		if (MR2_cntr == `MEASUREMENT_DIM-1) begin
+			MR2_cntr <= 0;
 			enable_MR2 <= True;
 			enable_storeE <= False;
 		end 
 		else
-			MR2 <= MR2+1;
+			MR2_cntr <= MR2_cntr+1;
 	endrule
 
-	rule measurement_residual2 (enable_MR2 && zk_valid); //check for zk?
+	rule measurement_residual2 (enable_MR2 && zk_valid); 
 		for (int i=0; i<`MEASUREMENT_DIM; i=i+1)
 			yk[i] <= zk[i] - E[i];
 		
@@ -156,26 +168,129 @@ module mkKalman(Kalman_Ifc);
 		enable_SUa <= True;
 	endrule
 
-	//Cov predictor
 
+	//Cov predictor vars
+	Reg#(Bool) enable_CP1 <- mkReg(False), enable_CP2 <- mkReg(False);
+	MatTypeSD L2 <- replicateM(replicateM(mkReg(0))), L1 <- replicateM(replicateM(mkReg(0)));
+	Reg#(int) CP_cntr <- mkReg(0);
+	
+
+	//Cov predictor Rules
 	rule cov_predict1 (enable_CP1);
+		VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
 
-		enable_CP2 <= True;
-		enable_CP1 <= False;
+		if (CP_cntr == 3*`MAT_DIM+5) begin
+			CP_cntr <= 0;
+			enable_CP1 <= False;
+			enable_CP2 <= True;
+		end
+		else
+			CP_cntr <= CP_cntr+1;
+
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            if ((CP_cntr-i < `MAT_DIM) &&(i<=CP_cntr)) begin
+				// Pk*F.Transpose
+                inp_Astream[i] = Pk[i][CP_cntr-i];
+                inp_Bstream[i] = F[i][CP_cntr-i];
+			end 
+		end
+
+		mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
+	endrule
+
+	rule store_L1 (enable_CP1);
+		let out_stream = mult_mod.get_out_stream;
+
+		for (int i=0; i<`MAT_DIM; i=i+1) begin
+			int k = CP_cntr - i - `MAT_DIM - 7;
+
+			if ((k>=0) && (k<`MAT_DIM)) begin
+				L1[i][k] <= out_stream[i];
+			end 
+		end
 	endrule
 
 	rule cov_predict2 (enable_CP2);
-		MatType temp_Pk = defaultValue;
+		VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
 
+		if (CP_cntr == 3*`MAT_DIM+5) begin
+			CP_cntr <= 0;
+			enable_CP2 <= False;
+			enable_CP3 <= True;
+		end
+		else
+			CP_cntr <= CP_cntr+1;
+
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            if ((CP_cntr-i < `MAT_DIM) &&(i<=CP_cntr)) begin
+				// F*L1
+                inp_Astream[i] = F[i][CP_cntr-i];
+                inp_Bstream[i] = L1[CP_cntr-i][i];
+			end 
+		end
+
+		mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
+	endrule
+
+	rule store_L2 (enable_CP2);
+		let out_stream = mult_mod.get_out_stream;
+
+		for (int i=0; i<`MAT_DIM; i=i+1) begin
+			int k = CP_cntr - i - `MAT_DIM - 7;
+
+			if ((k>=0) && (k<`MAT_DIM)) begin
+				L2[i][k] <= out_stream[i];
+			end 
+		end
+	endrule
+
+	rule cov_predict3 (enable_CP3);
 		for (int i=0; i<`STATE_DIM; i=i+1)
 			for (int j=0; j<`STATE_DIM; j=j+1)
-				temp_Pk[i][j] = L2[i][j] + Q[i][j];
+				Pk[i][j] = L2[i][j] + Q[i][j];	
 		
-		Pk <= temp_Pk;
-		enable_CP2 <= False;
+		enable_CP3 <= False;
 		enable_KG1 <= True;
 	endrule
 
+
+	//KalmanGC vars
+	Reg#(Bool) enable_KG1 <- mkReg(False), enable_SUb <- mkReg(False);
+	Reg#(int) KG_cntr <- mkReg(0);
+
+	rule kalmanGC1 (enable_KG1);
+		VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
+
+		if (KG_cntr == 3*`MAT_DIM+5) begin	//////
+			KG_cntr <= 0;
+			enable_CP1 <= False;
+			enable_CP2 <= True;
+		end
+		else
+			KG_cntr <= KG_cntr+1;
+
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            if ((CP_cntr-i < `MAT_DIM) &&(i<=CP_cntr)) begin
+				// Pk*F.Transpose
+                inp_Astream[i] = Pk[i][CP_cntr-i];
+                inp_Bstream[i] = F[i][CP_cntr-i];
+			end 
+		end
+
+		mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
+	endrule
+
+	rule store_L1 (enable_CP1);
+		let out_stream = mult_mod.get_out_stream;
+
+		for (int i=0; i<`MAT_DIM; i=i+1) begin
+			int k = CP_cntr - i - `MAT_DIM - 7;
+
+			if ((k>=0) && (k<`MAT_DIM)) begin
+				L1[i][k] <= out_stream[i];
+			end 
+		end
+	endrule
 	rule kalmanGC1 (enable_KG1);
 
 		enable_KG1 <= False;
@@ -197,13 +312,12 @@ module mkKalman(Kalman_Ifc);
 		enable_SUb <= True;
 	endrule
 
-	//State update
-	Reg#(int) SU_cntri <- mkReg(0), SU_cntrj <- mkReg(0), SU2_cntr <- mkReg(0);
 
+	//  State update rules
 	rule state_update1 (enable_SUa && enable_SUb);
 		vdot1.puta(Kk[SU_cntri][SU_cntrj]);
 		vdot1.putb(yk[SU_cntrj]);
-		enable_storeTemp1 <= True;
+		enable_storeTemp <= True;
 
 		if (SU_cntrj == `MEASUREMENT_DIM-1) begin
 			SU_cntrj <= 0;
@@ -222,29 +336,27 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	rule store_temp1 (enable_storeTemp1);
-		let z <- vdot1,dot_result;
-		temp1[SU2_cntr] <= z;
+	rule store_temp (enable_storeTemp);
+		let temp <- vdot1.dot_result;
+		xk[SU2_cntr] <= xk[SU2_cntr]+temp;
 
-		enable_storeTemp1 <= False;
-		enable_store2 <= True;
-
+		if (SU2_cntr == `STATE_DIM-1) begin
+			SU2_cntr <= 0;
+			xk_ready <= True;
+			enable_storeTemp <= False;
+		end 
+		else
+			SU2_cntr <= SU2_cntr+1;
 	endrule
 
-	rule state_update2 (enable_store2);
-		
+
+	//Cov update
+	rule cov_updater (enable_SUb);
+	//Kk*H 
+
+		Pk_ready <= True;
 	
 	endrule
-
-
-
-
-
-
-
-
-
-	
 
 		
 

@@ -9,6 +9,7 @@ package pe;
         method SysType getB();
         method SysType getC();
         method Bool validAB();
+        method Action reset_mod();
     endinterface
 
     (* synthesize *)
@@ -57,5 +58,12 @@ package pe;
         method SysType getB = rg_out_b;
         method Bool validAB = valid_a_b;
         method SysType getC = rg_out_c;
+
+        method Action reset_mod;
+            rg_out_a <= 0;
+            rg_out_b <= 0;
+            rg_out_c <= 0;
+            valid_a_b <= False;
+        endmethod
     endmodule
 endpackage

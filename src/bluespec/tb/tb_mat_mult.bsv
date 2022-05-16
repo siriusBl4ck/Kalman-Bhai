@@ -1,6 +1,7 @@
 package tb_mat_mult;
 
 `include "types.bsv"
+ 
 
 import FixedPoint::*;
 import mat_mult_systolic::*;
@@ -18,8 +19,9 @@ module tb_mat_mult(Empty);
     
     Reg#(VecType) inp_Astream <- mkReg(unpack(0));
     Reg#(VecType) inp_Bstream <- mkReg(unpack(0));
-    Reg#(MatType) out_stream <- mkReg(unpack(0));
+    Reg#(VecType) out_stream <- mkReg(unpack(0));
     Reg#(int) rg_cntr <- mkReg(0);
+    Vector#(`MAT_DIM, Vector#(`MAT_DIM, Reg#(SysType))) finalo <- replicateM(replicateM(mkReg(0)));
 
     SysType lv_mat_A[`MAT_DIM][`MAT_DIM];
     SysType lv_mat_B[`MAT_DIM][`MAT_DIM];
@@ -58,9 +60,9 @@ module tb_mat_mult(Empty);
         
         if (rg_cntr >= 1) begin
             //get the result back
-            MatType output_mat = myMult.get_out_stream();
-            out_stream <= output_mat;
-
+            /*MatType output_mat = myMult.get_out_stream();
+            //out_stream <= output_mat;
+            
             SysType c[3][3];
 
             c[0][0] = output_mat[0][0];
@@ -73,22 +75,80 @@ module tb_mat_mult(Empty);
 
             c[2][0] = output_mat[2][0];
             c[2][1] = output_mat[2][1];
-            c[2][2] = output_mat[2][2];
-
+            c[2][2] = output_mat[2][2];*/
+            
             $display($time, " [systole]\n");
-
-            for (int i = 0; i < 3; i = i + 1) begin
+            
+            /*for (int i = 0; i < 3; i = i + 1) begin
                 for (int j = 0; j < 3; j = j + 1) begin
                     fxptWrite(1, c[i][j]);
                     $write(" ");
                 end
                 $display("\n");
-            end
+            end*/
         end
 
-        if (rg_cntr == 10) $finish();
+        if (rg_cntr == 20) $finish();
     endrule
 
+    rule in_stream;
+        VecType a_in = replicate(0);
+        VecType b_in = replicate(0);
+
+        VecType outp = replicate(0);
+        //MatType output_mat = myMult.get_out_stream();
+
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            if ((rg_cntr-i < `MAT_DIM) &&(i<=rg_cntr)) begin
+                a_in[i] = lv_mat_A[i][rg_cntr-i];
+                b_in[i] = lv_mat_B[rg_cntr-i][i];
+
+                //$display("\nlvA[%d, %d]\n", i, rg_cntr-i);
+                //fxptWrite(5, lv_mat_A[i][rg_cntr-i]);
+                $display("\na\n");
+                fxptWrite(5, a_in[i]);
+                $display("\nb\n");
+                fxptWrite(5, b_in[i]);
+            end 
+            /*
+            else if (rg_cntr-i > `MAT_DIM) begin
+                int k = rg_cntr-i-`MAT_DIM-1;
+
+                if (k<`MAT_DIM)
+                    outp[i] = output_mat[i][k];
+
+                $display("\noutp[%d]\n", i, $time);
+                fxptWrite(5, outp[i]);
+            end*/
+        end 
+
+        inp_Astream <= a_in;
+        inp_Bstream <= b_in;
+        out_stream <= outp;
+    endrule
+
+    rule lol;
+        let z = myMult.get_out_stream;
+        VecType outr = z;
+        $display("\nbruh %d\n", rg_cntr);
+
+        for (int i=0; i<`MAT_DIM; i=i+1) begin
+            int k = rg_cntr-i-`MAT_DIM-7;
+            $display("\nincoming %d\n", k);
+            fxptWrite(5, outr[i]);
+
+            
+            if ((k>=0) && (k < `MAT_DIM)) begin
+                finalo[i][k] <= outr[i];
+                $display($time, " hooo %d,%d\n", i, k);
+            end
+        end
+    endrule
+    
+
+        
+
+    /*
     rule streams;
         SysType a1 = 0;
         SysType a2 = 0;
@@ -161,12 +221,17 @@ module tb_mat_mult(Empty);
             $display("\n");
         end
 
+        else if (rg_cntr == 5) begin
+            a
+        end
+
         VecType inp_A = unpack({pack(a3), pack(a2), pack(a1)});
         VecType inp_B = unpack({pack(b3), pack(b2), pack(b1)});
 
         inp_Astream <= inp_A;
         inp_Bstream <= inp_B;
     endrule
+    */
 endmodule
 
 endpackage

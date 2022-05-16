@@ -9,7 +9,8 @@ package mat_mult_systolic;
 
     interface Ifc_mat_mult_systolic;
         method Action feed_inp_stream(VecType a_stream, VecType b_stream);
-        method MatType get_out_stream();
+        method VecType get_out_stream;
+        method Action reset_mod;
     endinterface
 
     (* synthesize *)
@@ -19,30 +20,9 @@ package mat_mult_systolic;
         Vector#(`MAT_DIM, Wire#(SysType)) wr_inp_a <- replicateM(mkDWire(unpack(0)));
         Vector#(`MAT_DIM, Wire#(SysType)) wr_inp_b <- replicateM(mkDWire(unpack(0)));
         PulseWire wr_inp_rdy <- mkPulseWire;
+        Reg#(Bool) incr <- mkReg(False);
 
-        `ifdef VERBOSE
-        Reg#(Bit#(1)) rg_stage0_rdy <- mkReg(0);
-        Vector#(`MAT_DIM, Reg#(SysType)) rg_inp_a <- replicateM(mkReg(unpack(0)));
-        Vector#(`MAT_DIM, Reg#(SysType)) rg_inp_b <- replicateM(mkReg(unpack(0)));
-        rule stage0_latch;      //REMOVE later
-            if (wr_inp_rdy) begin
-                for (int i = 0; i < `MAT_DIM; i = i + 1) begin
-                    $display($time, " [MULT] [stage0] latching A[%d] ", i);
-                    fxptWrite(5, wr_inp_a[i]);
-                    $display("\n");
-                    $display($time, " [MULT] [stage0] latching B[%d] ", i);
-                    fxptWrite(5, wr_inp_b[i]);
-                    $display("\n");
-                    
-                    rg_inp_a[i] <= wr_inp_a[i];
-                    rg_inp_b[i] <= wr_inp_b[i];
-                end
-
-                rg_stage0_rdy <= 1'b1;
-            end
-            else rg_stage0_rdy <= 1'b0;
-        endrule
-        `endif
+        Reg#(int) cntr <- mkReg(0);
 
         rule systole;
             SysType lv_pe_a[`MAT_DIM][`MAT_DIM];
@@ -77,34 +57,47 @@ package mat_mult_systolic;
                     pe[i][j].putA(lv_pe_a[i][j]);
                     pe[i][j].putB(lv_pe_b[i][j]);
 
-                    `ifdef VERBOSE
-                    if (lv_pe_a[i][j] != unpack(0)) begin
-                        $display("\nprop: %d, %d", i, j, $time);
-                        fxptWrite(5, lv_pe_a[i][j]);
-                        fxptWrite(5, lv_pe_b[i][j]);
-                        $display("\n");
-                    end
-                    `endif
                 end
         endrule
 
+        rule inc_cntr (incr);
+            if (cntr == 3*`MAT_DIM-1) begin
+                cntr <= 0;
+                incr <= False;
+            end
+            else
+                cntr <= cntr+1;
+        endrule
+
         method Action feed_inp_stream(VecType a_stream, VecType b_stream);
+            $display($time, "\nfeed_inp %d\n", cntr);
             for (int i = 0; i < `MAT_DIM; i = i + 1) begin
                 wr_inp_a[i] <= a_stream[i];
                 wr_inp_b[i] <= b_stream[i];
             end   
 
+            incr <= True;
+
             wr_inp_rdy.send();
         endmethod
 
-        method MatType get_out_stream();
-            MatType out_stream = defaultValue;
 
-            for (int i = 0; i < `MAT_DIM; i = i + 1)
-                for (int j = 0; j < `MAT_DIM; j = j + 1)
-                    out_stream[i][j] = pe[i][j].getC();
+        method VecType get_out_stream if (cntr > `MAT_DIM);
+            VecType out_stream = replicate(0);
+            
 
+            for (int i=0; i<`MAT_DIM; i=i+1) begin
+                if (cntr-i-`MAT_DIM-1 < `MAT_DIM)
+                    out_stream[i] = pe[i][cntr-i-`MAT_DIM-1].getC();
+            end
             return out_stream;
         endmethod
+
+        method Action reset_mod;
+            for(int i=0; i<`MAT_DIM; i=i+1)
+                for(int j=0; j<`MAT_DIM; j=j+1)
+                    pe[i][j].reset_mod();
+        endmethod
+
     endmodule
 endpackage

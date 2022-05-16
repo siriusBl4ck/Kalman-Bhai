@@ -1,9 +1,10 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<omp.h>
 
-#define STATE_DIM 6
+#define STATE_DIM 12
 #define INPUT_DIM 6
-#define MEASUREMENT_DIM 2
+#define MEASUREMENT_DIM 6
 typedef float DTYPE;
 
 
@@ -35,7 +36,7 @@ void __attribute__ ((noinline)) printMatrices(DTYPE **mat, int noRows, int noCol
 }
 
 
-void __attribute__ ((noinline)) matmultvec(DTYPE *res, int res_dim,
+void __attribute__ ((noinline)) matmultvec(DTYPE *res, int res_dim, 
 				DTYPE *mat, int mat_noRows, int mat_noColumns, 
 				DTYPE *vec, int vec_dim) 
 {
@@ -59,7 +60,7 @@ void __attribute__ ((noinline)) matmultvec(DTYPE *res, int res_dim,
 	}
 }
 
-void __attribute__ ((noinline)) addvecs(DTYPE *res, int res_dim,
+void __attribute__ ((noinline)) addvecs(DTYPE *res, int res_dim, 
 			 DTYPE *a, int a_dim,
 			 DTYPE *b, int b_dim) 
 {
@@ -73,7 +74,7 @@ void __attribute__ ((noinline)) addvecs(DTYPE *res, int res_dim,
 }
 
 
-void __attribute__ ((noinline)) subvecs(DTYPE *res, int res_dim,
+void __attribute__ ((noinline)) subvecs(DTYPE *res, int res_dim, 
 			 DTYPE *a, int a_dim,
 			 DTYPE *b, int b_dim) 
 {
@@ -175,7 +176,7 @@ void __attribute__ ((noinline)) submats(DTYPE *res, int res_noRows, int res_noCo
 	}
 }
 
-
+#define dimensions MEASUREMENT_DIM
 void __attribute__ ((noinline)) inversemat(DTYPE *res, int res_dimensions, 
 				DTYPE *a, int a_dimensions) 
 {
@@ -185,58 +186,59 @@ void __attribute__ ((noinline)) inversemat(DTYPE *res, int res_dimensions,
 		exit(0);
 	}
 
-	int dimensions = res_dimensions;
+	DTYPE tempmat[dimensions][2*dimensions];
 
-	DTYPE tempmat[MEASUREMENT_DIM][2*MEASUREMENT_DIM];
-
-	//printf("%ld", sizeof(tempmat)/sizeof(DTYPE));
 
 	for (int i = 0; i < dimensions; i++) {
         for (int j = 0; j < 2 * dimensions; j++) {
 			if (j < dimensions)
 				tempmat[i][j] = a[i*dimensions + j];
-            if (j == (i + dimensions))
+            else if (j == (i + dimensions))
                 tempmat[i][j] = 1;
+			else
+				tempmat[i][j] = 0;
         }
     }
-	//printMatrices(tempmat, STATE_DIM, 2*STATE_DIM);
-
-    for (int i = dimensions - 1; i > 0; i--) {
-        if (tempmat[i - 1][0] < tempmat[i][0]) {
-			for (int j=0; j<2*dimensions; j++) {
-				float temp = tempmat[i][j];
-				tempmat[i][j] = tempmat[i-1][j];
-				tempmat[i-1][j] = temp;
-			}
-        }
-    }
-
+	DTYPE temp;
+                
     for (int i = 0; i < dimensions; i++) {
         for (int j = 0; j < dimensions; j++) {
             if (j != i) {
-				float temp;
+
+				if (tempmat[i][i] == 0){
+					for (int m=i+1; m < dimensions; m++){
+						if(tempmat[m][i] != 0)
+						{
+							for (int n=0; n < 2*dimensions; n++)
+							{
+								temp = tempmat[m][n];
+								tempmat[m][n] = tempmat[i][n];
+								tempmat[i][n] = temp;
+							}
+							break;
+						}
+					}
+				}		
+				
                 temp = tempmat[j][i] / tempmat[i][i];
                 for (int k = 0; k < 2 * dimensions; k++)
-                    tempmat[j][k] -= tempmat[j][k] * temp;
+                    tempmat[j][k] -= tempmat[i][k] * temp;
             }
         }
-    }
+
+}
 
     for (int i = 0; i < dimensions; i++) {
-		float temp;
         temp = tempmat[i][i];
         for (int j = 0; j < 2 * dimensions; j++)
             tempmat[i][j] = tempmat[i][j] / temp; //see if it can be added here
     }
-
-	//printMatrices(tempmat, STATE_DIM, 2*STATE_DIM);
 
 	for (int i=0; i<dimensions; i++) {
 		for (int j=0; j<dimensions; j++)
 			res[i*dimensions + j] = tempmat[i][j+dimensions];
 	}
 
-	//free(tempmat);
 }
 
 #define xk_dim       STATE_DIM
@@ -302,7 +304,7 @@ void __attribute__ ((noinline)) covariancePredictor(DTYPE *Pk, DTYPE *F, DTYPE *
 }
 
 
-#define E_dim yk_dim
+#define E_dim H_noRows
 void __attribute__ ((noinline)) measurementResidual(DTYPE *zk, DTYPE *H, DTYPE *xk, DTYPE *yk)
 {
 	DTYPE E[E_dim];
@@ -329,16 +331,18 @@ void __attribute__ ((noinline)) kalmangainCalculator(DTYPE *Pk, DTYPE *H, 	DTYPE
 	            Pk, Pk_noRows, Pk_noColumns,
 				H,  H_noRows,  H_noColumns);
 
+
 	amultb(C1, C1_noRows, C1_noColumns,
 	       H,  H_noRows,  H_noColumns,
 		   A,  A_noRows,  A_noColumns);
-
+	
 	addmats(C1, C1_noRows, C1_noColumns, 
 	        R,  R_noRows,  R_noColumns,
 			C1, C1_noRows, C1_noColumns);
-	
+
 	inversemat(C1, C1_noRows, 
 	           C1, C1_noRows);
+
 
 	amultb(Kk, Kk_noRows, Kk_noColumns,
 	       A,  A_noRows,  A_noColumns,
@@ -381,58 +385,84 @@ void __attribute__ ((noinline)) covarianceUpdate(DTYPE *Kk, DTYPE *H, DTYPE *Pk)
 			temp2,  temp2_noRows, temp2_noColumns);
 }
 
-
 void __attribute__ ((noinline)) kalmanIterate(DTYPE *xk, DTYPE *uk, DTYPE *F, DTYPE *B, DTYPE *Pk, DTYPE *Q, DTYPE *yk, DTYPE *zk, DTYPE *H, DTYPE *Kk, DTYPE *R) 
 {
-	statePredictor(xk,	uk,	F, B);
+	#pragma omp task depend (out:Kk)
+	{
 	covariancePredictor(Pk, F, Q);
-    measurementResidual(zk, H, xk, yk);
     kalmangainCalculator(Pk, H, R, Kk);
+	}
+
+	#pragma omp task depend(out:xk)
+	{
+	statePredictor(xk,	uk,	F, B);
+	measurementResidual(zk, H, xk, yk);
+	}
+
+
+	#pragma omp taskwait
+	{
 	stateUpdate(xk, Kk, yk);
 	covarianceUpdate(Kk, H, Pk);
+	}
 }
 
 
 int main() {
 
 	/*DTYPE mat[STATE_DIM * STATE_DIM];
-
-	for (int i=0; i<STATE_DIM; i++) {
-		for (int j=0; j<STATE_DIM; j++) {
-			if (i==j) mat[i*STATE_DIM + j] = 1;
-			else mat[i*STATE_DIM + j] = 0;
-		}
-	}
-	printmat(mat, STATE_DIM, STATE_DIM);
+    printmat(mat, STATE_DIM, STATE_DIM);
 	inversemat(mat, STATE_DIM, mat, STATE_DIM);
 	printmat(mat, STATE_DIM, STATE_DIM);
 	*/
 
-	DTYPE xk[STATE_DIM] = {0, 0, 0, 0, 0, 0};
+	double t1, t2;
+	DTYPE xk[STATE_DIM] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	DTYPE uk[INPUT_DIM] = {0, 0, 0, 0, 0, 0};
 
-	DTYPE Pk[STATE_DIM * STATE_DIM] = { 500,   0,   0,   0,   0,   0,
-								          0, 500,   0,   0,   0,   0,
-          								  0,   0, 500,   0,   0,   0,
-          								  0,   0,   0, 500,   0,   0,
-          								  0,   0,   0,   0, 500,   0,
-          								  0,   0,   0,   0,   0, 500 };
+	DTYPE Pk[STATE_DIM * STATE_DIM] = { 500,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+								          0, 500,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+          								  0,   0, 500,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+          								  0,   0,   0, 500,   0,   0,   0,   0,   0,   0,   0,   0,
+          								  0,   0,   0,   0, 500,   0,   0,   0,   0,   0,   0,   0,
+          								  0,   0,   0,   0,   0, 500,   0,   0,   0,   0,   0,   0,
+										  0,   0,   0,   0,   0,   0, 500,   0,   0,   0,   0,   0, 
+										  0,   0,   0,   0,   0,   0,   0, 500,   0,   0,   0,   0,	
+										  0,   0,   0,   0,   0,   0,   0,   0, 500,   0,   0,   0,	
+										  0,   0,   0,   0,   0,   0,   0,   0,   0, 500,   0,   0,
+										  0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 500,   0,
+										  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 500	
+									  };
 
-	DTYPE zk[MEASUREMENT_DIM] = {393.66, 300.4};
+	DTYPE zk[MEASUREMENT_DIM] = {393.66, 300.4, 150.4, 142.5, 234, 235};
 
-	DTYPE F[STATE_DIM * STATE_DIM] = {1,   1, 0.5,  0,  0,   0,
-       								  0,   1,   1,  0,  0,   0,
-       								  0,   0,   1,  0,  0,   0,
-       								  0,   0,   0,  1,  1, 0.5,
-       								  0,   0,   0,  0,  1,   1,
-       								  0,   0,   0,  0,  0,   1};
+	DTYPE F[STATE_DIM * STATE_DIM] = {1,   1, 0.5,  0,  0,   0,  0,   0,   0,  0,  0,   0,
+       								  0,   1,   1,  0,  0,   0,  0,   0,   0,  0,  0,   0,
+       								  0,   0,   1,  0,  0,   0,  0,   0,   0,  0,  0,   0,
+       								  0,   0,   0,  1,  1, 0.5,  0,   0,   0,  0,  0,   0,
+       								  0,   0,   0,  0,  1,   1,  0,   0,   0,  0,  0,   0,
+       								  0,   0,   0,  0,  0,   1,  0,   0,   0,  0,  0,   0,
+									  0,   0,   0,  0,  0,   0,  1,   1, 0.5,  0,  0,   0, 
+       								  0,   0,   0,  0,  0,   0,  0,   1,   1,  0,  0,   0,
+       								  0,   0,   0,  0,  0,   0,  0,   0,   1,  0,  0,   0,
+       								  0,   0,   0,  0,  0,   0,  0,   0,   0,  1,  1, 0.5,
+       								  0,   0,   0,  0,  0,   0,  0,   0,   0,  0,  1,   1,
+       								  0,   0,   0,  0,  0,   0,  0,   0,   0,  0,  0,   1
+									 };
 
-	DTYPE Q[STATE_DIM * STATE_DIM] = {  0.01, 0.02, 0.02,    0,    0,    0,
-        								0.02, 0.04, 0.04,    0,    0,    0,
-        								0.02, 0.04, 0.04,    0,    0,    0,
-          								   0,    0,    0, 0.01, 0.02, 0.02,
-          								   0,    0,    0, 0.02, 0.04, 0.04,
-          								   0,    0,    0, 0.02, 0.04, 0.04   };
+	DTYPE Q[STATE_DIM * STATE_DIM] = {  0.01, 0.02, 0.02,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+        								0.02, 0.04, 0.04,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+        								0.02, 0.04, 0.04,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+          								   0,    0,    0, 0.01, 0.02, 0.02,    0,    0,    0,    0,    0,    0,
+          								   0,    0,    0, 0.02, 0.04, 0.04,    0,    0,    0,    0,    0,    0,
+          								   0,    0,    0, 0.02, 0.04, 0.04,    0,    0,    0,    0,    0,    0,
+										   0,    0,    0,    0,    0,    0, 0.01, 0.02, 0.02,    0,    0,    0,
+        								   0,    0,    0,    0,    0,    0, 0.02, 0.04, 0.04,    0,    0,    0,
+        								   0,    0,    0,    0,    0,    0, 0.02, 0.04, 0.04,    0,    0,    0,
+          								   0,    0,    0,    0,    0,    0,    0,    0,    0, 0.01, 0.02, 0.02,
+          								   0,    0,    0,    0,    0,    0,    0,    0,    0, 0.02, 0.04, 0.04,
+          								   0,    0,    0,    0,    0,    0,    0,    0,    0, 0.02, 0.04, 0.04  
+								     };
 
 
 	DTYPE B[STATE_DIM * INPUT_DIM] = {	0,   0,   0,  0,   0,   0,
@@ -440,28 +470,38 @@ int main() {
 										0,   0,   0,  0,   0,   0,
 										0,   0,   0,  0,   0,   0,
 										0,   0,   0,  0,   0,   0,
-										0,   0,   0,  0,   0,   0 };
+										0,   0,   0,  0,   0,   0,
+										0,   0,   0,  0,   0,   0,
+       									0,   0,   0,  0,   0,   0,
+										0,   0,   0,  0,   0,   0,
+										0,   0,   0,  0,   0,   0,
+										0,   0,   0,  0,   0,   0,
+										0,   0,   0,  0,   0,   0		
+								     };
 
-	DTYPE R[MEASUREMENT_DIM * MEASUREMENT_DIM] = {9, 0,
-												  0, 9};
+	DTYPE R[MEASUREMENT_DIM * MEASUREMENT_DIM] = {9, 0, 0, 0, 0, 0,
+												  0, 9, 0, 0, 0, 0,
+												  0, 0, 9, 0, 0, 0,
+												  0, 0, 0, 9, 0, 0,
+												  0, 0, 0, 0, 9, 0,
+												  0, 0, 0, 0, 0, 9
+												  };
 
 
-	DTYPE H[MEASUREMENT_DIM * STATE_DIM] = {1, 0, 0, 0, 0, 0,
-       										0, 0, 0, 1, 0, 0};
+	DTYPE H[MEASUREMENT_DIM * STATE_DIM] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+       										0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+											0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 
+       										0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+											0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+       										0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0
+										   };
 
 	DTYPE Kk[STATE_DIM * MEASUREMENT_DIM];
 	DTYPE yk[MEASUREMENT_DIM];
-
-	kalmanIterate(xk, uk, F, B, Pk, Q, yk, zk, H, Kk, R);
-
-	printf("--------\nxk\n--------\n");
-	for(int i=0; i<STATE_DIM; i++) {
-		printf("%f\n", xk[i]);
-	}
-	printf("--------\nPk\n--------\n");
-	for(int i=0; i<STATE_DIM*STATE_DIM; i++) {
-		printf("%f\n", Pk[i]);
-	}
+	t1 = omp_get_wtime();
+	for (int i=0; i < 100; i++)
+		kalmanIterate(xk, uk, F, B, Pk, Q, yk, zk, H, Kk, R);
+	t2 = omp_get_wtime();
+	printf("Time: %g\n", t2-t1);
 }
-
 

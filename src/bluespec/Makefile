@@ -2,10 +2,14 @@
 default:
 	@echo "To compile and simulate Mat mult, run make mat_mult"
 	@echo "To compile and simulate PE, run make pe"
+	@echo "To compile KalmanAlgo.bsv, run make kalman"
+
+kalman:
+	bsc -verilog -vdir verilog -bdir bsv_build -u KalmanAlgo.bsv 
 
 mat_mult: 
 	@echo "Compiling tb_mat_mult.bsv..."
-	bsc -verilog -vdir verilog -bdir bsv_build -D VERBOSE -u tb/tb_mat_mult.bsv
+	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_mat_mult.bsv
 	bsc -vdir verilog -e tb_mat_mult -u verilog/tb_mat_mult.v
 	./a.out
 
