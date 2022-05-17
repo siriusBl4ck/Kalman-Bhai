@@ -177,6 +177,7 @@ module mkKalman(Kalman_Ifc);
 	
 
 	//Cov predictor Rules
+	//REPLICATE THIS
 	rule cov_predict1 (enable_CP1);
 		MatType tempF = defaultValue;
 		
@@ -188,8 +189,24 @@ module mkKalman(Kalman_Ifc);
 		mult_mod.start;
 	endrule
 
+	rule store_L1 (enable_CP1);
+		let out_stream = mult_mod.getC;
+		let k = mult_mod.getk;
 
-		/*VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
+		for (int i=0; i<`MAT_DIM; i=i+1) begin
+			if ((k>=i) && (k-i<`MAT_DIM)) begin
+				L1[i][k-i] <= out_stream[i];
+			end 
+		end
+
+		if (k==2*`MAT_DIM-2) begin
+			enable_CP1 <= False;
+			enable_CP2 <= True;
+		end
+	endrule
+
+
+	/*VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
 
 		if (CP_cntr == 3*`MAT_DIM+5) begin
 			CP_cntr <= 0;
@@ -211,20 +228,7 @@ module mkKalman(Kalman_Ifc);
 	endrule
 	int k = CP_cntr - i - `MAT_DIM - 7;*/
 
-	rule store_L1 (enable_CP1);
-		let out_stream = mult_mod.getC;
-		let k = mult_mod.getk;
 
-		for (int i=0; i<`MAT_DIM; i=i+1) begin
-			if ((k>=i) && (k-i<`MAT_DIM)) begin
-				L1[i][k-i] <= out_stream[i];
-			end 
-		end
-
-		if (k==2*`MAT_DIM-2) begin
-			enable_CP1 <= False;
-			enable_CP2 <= True;
-	endrule
 
 	rule cov_predict2 (enable_CP2);
 		VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
