@@ -22,41 +22,87 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
         cntr <= cntr + 1;
     endrule
 
-    rule rl_compute (rdy);
-        for (int c = 0; c < `MAT_DIM; c = c + 1) begin
-            if (cntr == c) begin
-                for (int i = 0; i < `MAT_DIM; i = i + 1) begin
-                    if (i != c) begin
-                        for (int j = 0; j < `MAT_DIM; j=j+1) begin
-                            //TODO: replace these operations by proper modules
-                            a_inv[i][j] <= a_inv[i][j] - (a_inv[i][c] / a_inv[c][c]) * a_inv[c][j];
-                            a_inv[i][j] <= a_inv[i][j] - (a[i][c] / a[c][c]) * a_inv[c][j];
-                        end
-                    end
-                end
+    rule rl_compute (!rdy);
+        int c = cntr;
+        //MatType temp_matA = defaultValue, temp_matA_inv=defaultValue;
+
+        /*
+                FixedPoint#(33, 16) lv_quot = fxptQuot(matA[i][c], matA[c][c]);
+                SysType lv_quot_final = fxptTruncate(lv_quot);
+
+                SysType lv_mult = fxptTruncate(fxptMult(lv_quot_final, matA[c][j]));
+                temp_matA[i][j] = fxptTruncate(fxptSub(matA[i][j], lv_mult));
+
+                SysType lv_mult2 = fxptTruncate(fxptMult((lv_quot_final), matA_inv[c][j]));
+                temp_matA_inv[i][j] = fxptTruncate(fxptSub(matA_inv[i][j], lv_mult2));
+        */
+
+        //SysType lv_ratio[`MAT_DIM];
+        /*
+        Vector#(`MAT_DIM, VecType) matA_vecs <- replicate(unpack(0));
+
+        for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+            matA_vecs[j] = matA[j];
+        end
+        
+        for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+            //if (j != c) begin
+            FixedPoint#(33, 16) lv_q = fxptQuot(matA[j][c], matA[c][c]); 
+            lv_ratio[j] = fxptTruncate(lv_q);
+            //end
+        end
+        */
+
+        /*
+        for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+            for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+                
             end
         end
+        for (int j=0; j<`MAT_DIM; j= j+1) begin
+            temp_matA[c][j] = matA[c][j];
+            temp_matA_inv[c][j] = matA_inv[c][j];
+        end
+
+
         if (cntr == `MAT_DIM) begin
             for (int k = 0; k < `MAT_DIM; k = k + 1) begin
                 for (int l = 0; l < `MAT_DIM; l = l + 1) begin
-                    a_inv[k][l] <= a_inv[k][l] / a_inv[k][k];
+                    FixedPoint#(33, 16) lv_q = fxptQuot(matA_inv[k][l], matA[k][k]);
+                    temp_matA_inv[k][l] = fxptTruncate(lv_q);
                 end
             end
             rdy <= True;
         end
+
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            for (int j=0; j<`MAT_DIM; j=j+1) begin
+                matA[i][j] <= temp_matA[i][j];
+                matA_inv[i][j] <= temp_matA_inv[i][j];
+            end
+        end
+        */
+
+        rdy <= True;
     endrule
 
     method Action put(MatType matrixA);
-        matA <= unpack(pack(matrixA));
+    /*
+        for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+            for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+                
+                matA[i][j] <= matrixA[i][j];
+            end
+        end
 
         //initialize as identity matrix
         for (int i = 0; i < `MAT_DIM; i = i + 1) begin
             for (int j = 0; j < `MAT_DIM; j = j + 1) begin
-                if (i == j) matA_inv[i][j] <= 1'b1;
-                else matA_inv[i][j] <= 1'b0;
+                if (i == j) matA_inv[i][j] <= fromRational(1, 1);
+                else matA_inv[i][j] <= fromRational(0, 1);
             end
         end
-
+    */
         rdy <= False;
 
         //init counter
@@ -68,7 +114,14 @@ module mat_inv_gaussian_3x3(Ifc_mat_inv_gaussian);
     endmethod
 
     method MatType get() if (rdy);
-        MatType lv_a_inv = unpack(pack(a_inv));
+        MatType lv_a_inv = unpack(0);
+        /*
+        for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+            for (int j = 0; i < `MAT_DIM; j = j + 1) begin
+                lv_a_inv[i][j] = matA_inv[i][j];
+            end
+        end
+        */
         return lv_a_inv;
     endmethod
 endmodule

@@ -1,0 +1,1472 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1cm
+\topmargin 1cm
+\rightmargin 1cm
+\bottommargin 1cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+EE5332 Final Course Project:
+\begin_inset Newline newline
+\end_inset
+
+A study of Hardware Acceleration of Kalman Filter
+\end_layout
+
+\begin_layout Author
+Saurav Sachin Kale (EE19B141), Surya Prasad S (EE19B121), Arun Krishna AMS
+ (EE19B001)
+\end_layout
+
+\begin_layout Part
+The Kalman Filter
+\end_layout
+
+\begin_layout Section*
+1 The Algorithm
+\end_layout
+
+\begin_layout Standard
+Kalman Filter is an algorithm that produces estimates of state variables
+ of a discrete data controlled system (thus an estimate of the state of
+ the system) based on measurements which can typically be noisy.
+\begin_inset Newline newline
+\end_inset
+
+We have the following parameters in a Kalman Filter:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\vec{x_{k}}$
+\end_inset
+
+: state vector
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\vec{u_{k}}$
+\end_inset
+
+: control-input vector
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\vec{w_{k}}$
+\end_inset
+
+: process noise vector, assumed to be Gaussian with zero mean and covariance
+ 
+\begin_inset Formula $Q$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\vec{z_{k}}$
+\end_inset
+
+: measurement vector
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\vec{\nu_{k}}$
+\end_inset
+
+: measurement noise vector
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $F$
+\end_inset
+
+ : state transition matrix
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $B$
+\end_inset
+
+ : control-input matrix
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $H$
+\end_inset
+
+ : measurement matrix, assumed to be Gaussian with zero mean and covariance
+ 
+\begin_inset Formula $R$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Together, 
+\begin_inset Formula $F$
+\end_inset
+
+, 
+\begin_inset Formula $B$
+\end_inset
+
+, 
+\begin_inset Formula $H$
+\end_inset
+
+, 
+\begin_inset Formula $Q$
+\end_inset
+
+, and 
+\begin_inset Formula $R$
+\end_inset
+
+ together define the system.
+ The job of the Kalman filter is to produce estimates of 
+\begin_inset Formula $\vec{x_{k}}$
+\end_inset
+
+given the initial estimate 
+\begin_inset Formula $x_{0}$
+\end_inset
+
+, series of measurements 
+\begin_inset Formula $z_{k}$
+\end_inset
+
+ along with the system definition.
+\begin_inset Newline newline
+\end_inset
+
+The evolution of state parameters from 
+\begin_inset Formula $k-1^{th}$
+\end_inset
+
+ iteration to the 
+\begin_inset Formula $k^{th}$
+\end_inset
+
+ iteration (process model) is:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\vec{x_{k}}=F\vec{x_{k-1}}+B\vec{u_{k-1}}+\vec{w_{k-1}}
+\]
+
+\end_inset
+
+The measurement model is:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\vec{z_{k}}=H\vec{x_{k}}+\vec{\nu_{k}}
+\]
+
+\end_inset
+
+Presented below is the algorithm of Kalman Filter which produces estimates
+ for 
+\begin_inset Formula $\vec{x}$
+\end_inset
+
+ every iteration:
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+Prediction:
+\begin_inset Formula 
+\[
+\vec{x_{k}^{-}}=F\vec{x_{k-1}^{+}}+B\vec{u_{k-1}}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+P_{k}^{-}=FP_{k-1}^{+}F^{T}+Q
+\]
+
+\end_inset
+
+Update:
+\begin_inset Formula 
+\[
+\tilde{y_{k}}=\vec{z_{k}}-H\vec{x_{k}^{-}}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+K_{k}=P_{k}^{-}H^{T}(R+HP_{k}^{-}H^{T})^{-1}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\vec{x_{k}^{+}}=\vec{x_{k}^{-}}+K_{k}\tilde{y_{k}}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+P_{k}^{+}=(I-K_{k}H)P_{k}^{-}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Kalman Filter Algorithm
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+Where
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $P_{k}$
+\end_inset
+
+ : error state covariance
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\tilde{y_{k}}$
+\end_inset
+
+ : measurement residual
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $K_{k}$
+\end_inset
+
+ : Kalman gain
+\end_layout
+
+\begin_layout Itemize
+Superscript of 
+\begin_inset Formula $+$
+\end_inset
+
+ denotes post update values and 
+\begin_inset Formula $-$
+\end_inset
+
+ denotes pre update values in an iteration
+\end_layout
+
+\begin_layout Section*
+2 Analysis and optimizations
+\end_layout
+
+\begin_layout Standard
+For an 
+\begin_inset Formula $n$
+\end_inset
+
+ state variables, 
+\begin_inset Formula $n$
+\end_inset
+
+ input variables and 
+\begin_inset Formula $n$
+\end_inset
+
+ measurements Kalman Filter, the following .
+ Suffixes imply operations:
+\end_layout
+
+\begin_layout Itemize
+M: Multiply
+\end_layout
+
+\begin_layout Itemize
+A: add/sub
+\end_layout
+
+\begin_layout Itemize
+I: Inverse
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="7" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Step
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Estimated Operations
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+\vec{x_{k}^{-}}=F\vec{x_{k-1}^{+}}+B\vec{u_{k-1}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{2}$
+\end_inset
+
+M+
+\begin_inset Formula $n(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{2}$
+\end_inset
+
+M+
+\begin_inset Formula $n(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n$
+\end_inset
+
+A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+P_{k}^{-}=FP_{k-1}^{+}F^{T}+Q
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{2}$
+\end_inset
+
+A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+\tilde{y_{k}}=\vec{z_{k}}-H\vec{x_{k}^{-}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{2}$
+\end_inset
+
+M+
+\begin_inset Formula $n(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n$
+\end_inset
+
+A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+K_{k}=P_{k}^{-}H^{T}(R+HP_{k}^{-}H^{T})^{-1}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{2}$
+\end_inset
+
+A+
+\begin_inset Formula $\approx n^{3}$
+\end_inset
+
+I
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+\vec{x_{k}^{+}}=\vec{x_{k}^{-}}+K_{k}\tilde{y_{k}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{2}$
+\end_inset
+
+M+
+\begin_inset Formula $n(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n$
+\end_inset
+
+A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula 
+\[
+P_{k}^{+}=(I-K_{k}H)P_{k}^{-}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A+
+\begin_inset Formula $n^{2}$
+\end_inset
+
+A+
+\begin_inset Formula $n^{3}$
+\end_inset
+
+M+
+\begin_inset Formula $n^{2}(n-1)$
+\end_inset
+
+A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The total order of operations comes to about 
+\begin_inset Formula $13n^{3}$
+\end_inset
+
+, in the range of 2-25 KFLOPs for typical Kalman Filter sizes (6, 12 etc).
+\begin_inset Newline newline
+\end_inset
+
+However, one must note that for realtime control applications, the iteration
+ interval should be in the range of ms.
+ This implies a throughput of typically 5-10 MFLOPS.
+ The data rate involves feeding 
+\begin_inset Formula $x_{k},u_{k},P_{k},z_{k}$
+\end_inset
+
+ = 54 floating point numbers every iteration, therefore
+\begin_inset Formula 
+\[
+\frac{54\times4\times8b}{1ms}=1.7Mbps
+\]
+
+\end_inset
+
+So we have
+\end_layout
+
+\begin_layout Itemize
+Bitrate: 1.7Mbps
+\end_layout
+
+\begin_layout Itemize
+Throughput: 5-10 MFLOPS
+\end_layout
+
+\begin_layout Standard
+A few approaches come to mind in order to implement the Kalman Filter:
+\end_layout
+
+\begin_layout Itemize
+CPU Single Threaded: Would be implemented in C.
+ It is easy to implement, and can be used as a baseline to compare implementatio
+ns
+\end_layout
+
+\begin_layout Itemize
+GPU: Theoretically this would be easily capable of such a workflow from
+ the throughput and bitrate
+\end_layout
+
+\begin_layout Itemize
+CPU Multithreaded: This approach also seems feasible, since typical Kalman
+ filters are not large in size
+\end_layout
+
+\begin_layout Itemize
+Custom Hardware: This would include an FPGA design.
+ The merits of this could be cost, lower power consumption and could be
+ ideal for deploying for low end low power systems.
+ Several application specific and general optimizations like fixed point
+ could be made to drastically lower the latency of operations.
+\end_layout
+
+\begin_layout Standard
+We shall try three such approaches:
+\end_layout
+
+\begin_layout Itemize
+Baseline C
+\end_layout
+
+\begin_layout Itemize
+CPU Multithreading using OpenMP
+\end_layout
+
+\begin_layout Itemize
+Custom Hardware description using Bluespec SystemVerilog
+\end_layout
+
+\begin_layout Itemize
+Synthesis on Vitis HLS
+\end_layout
+
+\begin_layout Standard
+Analysing the Directed Acyclic Graph (DAG) of this algorithm presents some
+ interesting insights on possible optimizations:
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename DFG.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+DAG for Kalman Iteration (direction of control flow is downwards)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+From the given graph we can see that the state predictor and measurement
+ residual equations (the tree on the left) is independent of the Covariance
+ predictor and kalman gain calculator.
+ Thus these can be parallelized.
+\end_layout
+
+\begin_layout Part
+Implementation and results
+\end_layout
+
+\begin_layout Section*
+1 Baseline: Single threaded C
+\end_layout
+
+\begin_layout Standard
+A working C++ code implementation of Kalman filter which uses “Eigen” matrix
+ library was implemented.
+ The “Eigen” library is optimized for large matrices – but has huge overhead.
+ But considering that the dimensions of matrices generally involved in the
+ Kalman filters are less than 20 (It depends a lot on applications.
+ But general use-cases like localization and sensor fusion in mobile robots
+ have operations on matrices with dimensions less than 15) - we realize
+ that overhead is way high for any optimization to be useful.
+ Hence all the matrix operations (multiplication, inverses) were implemented
+ in C directly (Single threaded).
+ Inverse of matrix is implemented using Gauss-Jordan Elimination method.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Profiling tools like gprof, Valgrind and google-preformance tools were used
+ to analyze the C-implementation.
+ gprof is a sampling based profiling tool.
+ Since the execution of functions (that describe individual equations) was
+ really fast and because of the low sampling frequency(100Hz) of gprof,
+ no useful information was obtained through gprof tool.
+ Google-perf tools were used with multiple sampling frequencies, but it
+ never worked.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Out of all three profiling tools - Valgrind gave the most accurate results.
+ Valgrind runs the program in Valgrind virtual machine.
+ Callgrind - Valgrind’s tool is used to profile the code.
+ Since Valgrind is a simulated virtual machine, it gives the best accurate
+ results but at the same time its extremely slow.
+ Callgrind’s output is visualized through KCachegrind tool.
+\begin_inset Newline newline
+\end_inset
+
+The test case considered consisted of a 12 dimensional state variable vector,
+ 6 dimensional measurement vector and 6 dimensional input vector.
+ We obtained these counts for number of instructions in both approaches:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="2" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+With Eigen
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+From scratch
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2,315,849 instructions
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+569,774 instructions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As expected it has huge overhead.
+ But considering the C-code needs to be implemented in Vitis HLS - we proceed
+ our analysis with the custom-built version.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename valgrind_output.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Valgrind's analysis output
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+2 Multithreading in CPU using OpenMP
+\end_layout
+
+\begin_layout Standard
+We now try to implement the Kalman filter by having task parallelism using
+ OpenMP.
+ Task parallelism focuses on distributing tasks—concurrently performed by
+ processes or threads—across different processors Based on the SFG and the
+ Valgrind profiling result, we parallelize the following KalmanGain Calculator
+ and Covariance Predictor as a single task State Predictor and Measurement
+ Residual as a single task.
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename valgrind_output2.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Valgrind profiling result
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The number of instructions for both implementations for each iteration is
+ around the same ~420000 instructions.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When we time the implementation for 100 iterations: 
+\end_layout
+
+\begin_layout Itemize
+Single threaded 100 cycles: 0.014 seconds 
+\end_layout
+
+\begin_layout Itemize
+Task Parallelized 100 cycles: 0.00568 seconds 
+\end_layout
+
+\begin_layout Itemize
+Single threaded 1 cycle: 0.00014 seconds 
+\end_layout
+
+\begin_layout Itemize
+Task Parallelized 1 cycle: 0.0000568 seconds
+\end_layout
+
+\begin_layout Standard
+As we can see the task parallelized implementation is 
+\begin_inset Formula $\sim20$
+\end_inset
+
+ times faster compared to single threaded implementation.
+\end_layout
+
+\begin_layout Section*
+3 Custom Hardware Description in Bluespec SystemVerilog
+\end_layout
+
+\begin_layout Standard
+For custom hardware we decided to go with Bluespec SystemVerilog due to
+ the following reasons:
+\end_layout
+
+\begin_layout Itemize
+Ease of use: Can directly map the task schedule to hardware description
+ using bluespec's rule based approach, easier to write sophisticated state
+ machines
+\end_layout
+
+\begin_layout Itemize
+More control: Closer to hardware description than Vitis HLS, more control
+ over clock cycle counts and latency
+\end_layout
+
+\begin_layout Itemize
+Library support: We made use of the FixedPoint library which was readily
+ available by default.
+ In the entire bluespec implementation, we have used FixedPoint<16, 16>
+\end_layout
+
+\begin_layout Standard
+There were two major operations which had to be dealt with, namely matrix
+ multiplication and matrix inversion.
+ Other modules included vector dot product which was also completely pipelined.
+ From the DAG in Figure 1, we can see that there are a large number of Matrix*Ma
+trix operations scheduled in series which is computed parallel to the Matrix*Vec
+tor operations.
+ So we can afford to give Matrix*Vector more latency.
+ Hence we went with just 2 vector dot product modules to compute the result
+ for Matrix*Vector operations.
+ We chose to directly add the elements in a single cycle for add operations
+ between matrices and vectors.
+\end_layout
+
+\begin_layout Subsection*
+3.1 Matrix Multiplication
+\end_layout
+
+\begin_layout Standard
+We went with a systolic array based approach with multiply accumulate processing
+ elements.
+ The input and output of this module are of the length of a vector.
+ This reduces the number of ports and also allows for pipelining, although
+ we were not able to pipeline it as we ran out of time.
+ Currently the top module issues each matrix multiplication sequentially.
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename pe.png
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename systole.png
+	scale 70
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Architecture for matrix multiplication systolic array
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+This resulted in an architecture that takes 
+\begin_inset Formula $3n-2$
+\end_inset
+
+ clock cycles to compute the product.
+ A significant improvement from the 
+\begin_inset Formula $O(n^{3})$
+\end_inset
+
+ operations estimated, even if we take best case 1 clock per operation.
+\end_layout
+
+\begin_layout Subsection*
+3.2 Matrix Inverse
+\end_layout
+
+\begin_layout Standard
+Several architectures were explored (such as QR and LU decomposition) but
+ we ended up going with Gauss Jordan elimination using row operations, as
+ it seemed to be easiest to implement and not a lot of latency was sacrificed.
+ For a non-singular matrix 
+\begin_inset Formula $M$
+\end_inset
+
+ of dimensions 
+\begin_inset Formula $n\times n$
+\end_inset
+
+, the algorithm works in two stages:
+\end_layout
+
+\begin_layout Itemize
+In the first 
+\begin_inset Formula $n$
+\end_inset
+
+ clock cycles, each column is made a pivot by the operation 
+\begin_inset Formula $R_{k}\leftarrow R_{k}-\alpha R_{p}$
+\end_inset
+
+ where 
+\begin_inset Formula $R_{k}$
+\end_inset
+
+ is any row except pivot row, and 
+\begin_inset Formula $R_{p}$
+\end_inset
+
+ is the pivot row.
+ 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is the ratio between 
+\begin_inset Formula $R_{k}[p]$
+\end_inset
+
+, the element in the same column but in 
+\begin_inset Formula $R_{k}$
+\end_inset
+
+ and the pivot element.
+ This, done for all other rows at the same time, ensures one column becomes
+ a pivot every cycle.
+ Thus in 
+\begin_inset Formula $n$
+\end_inset
+
+ cycles, all the columns become pivots.
+\end_layout
+
+\begin_layout Itemize
+A complication can occur if the pivot element is 
+\begin_inset Formula $0$
+\end_inset
+
+, we get a divide by zero in computation of 
+\begin_inset Formula $\alpha$
+\end_inset
+
+.
+ In that case, we perform the following operation: 
+\begin_inset Formula $R_{p}\leftarrow R_{p}+\sum R_{k}$
+\end_inset
+
+ such that 
+\begin_inset Formula $k>p$
+\end_inset
+
+ (add all the rows below and including 
+\begin_inset Formula $R_{p}$
+\end_inset
+
+).
+ This will only fail if the matrix is singular, therefore it solves our
+ problem.
+\end_layout
+
+\begin_layout Itemize
+Finally, each row is divided by the value of the pivot element.
+\end_layout
+
+\begin_layout Standard
+The above operations are applied to the input matrix 
+\begin_inset Formula $M$
+\end_inset
+
+ and the identity matrix (which we shall call the output matrix 
+\begin_inset Formula $N$
+\end_inset
+
+) 
+\begin_inset Formula $I_{n\times n}$
+\end_inset
+
+.
+ By the end, 
+\begin_inset Formula $M$
+\end_inset
+
+ becomes 
+\begin_inset Formula $I_{n\times n}$
+\end_inset
+
+ and 
+\begin_inset Formula $N$
+\end_inset
+
+ becomes 
+\begin_inset Formula $M^{-1}$
+\end_inset
+
+.
+ This results in a latency of 
+\begin_inset Formula $n+1$
+\end_inset
+
+ clock cycles for the inverse.
+ A significant improvement over the 
+\begin_inset Formula $O(n^{3})$
+\end_inset
+
+ operations estimated.
+\end_layout
+
+\begin_layout Subsection*
+3.3 Top module
+\end_layout
+
+\begin_layout Standard
+With the elementary operations defined, a state machine was created which
+ applied the relevant operations one by one to the inputs to produce the
+ estimates of state variables.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename task_schedule.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Task schedule for the top module
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+The rules in the top module are based on the functions used in the C code
+ and are scheduled according to the table above.
+\end_layout
+
+\begin_layout Section*
+4 Synthesis using Vitis HLS
+\end_layout
+
+\begin_layout Standard
+Synthesis using Vitis HLS was done based on the baseline C code.
+ We used floating point operations here.
+ For 6 state dimensions, 2 measurement dimesions and 6 input dimensions,
+ Vitis produced the following results:
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename vitis_results.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Vitis results
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+C Synthesis Expected Latency: 415 cycles 
+\end_layout
+
+\begin_layout Itemize
+C/RTL Cosimulation Latency: 369 cycles
+\end_layout
+
+\begin_layout Itemize
+Estimated frequency max based on C synthesis: 31.62 MHz 
+\end_layout
+
+\begin_layout Standard
+The above results were obtained with bare minimum optimizations and passed
+ the test case.
+ Various optimizations like unrolling, pipelining, software pipelining and
+ parallelism were tried through DATAFLOW, PIPELINE, UNROLL, DEPENDENCE pragmas.
+ Any further optimization resulted in dependency errors which we were unable
+ to resolve in the given time.
+ 
+\end_layout
+
+\begin_layout Part
+Conclusion
+\end_layout
+
+\begin_layout Standard
+One of the real-time applications for the Kalman filter is Simultaneous
+ Localization in mobile robots.
+ An extreme case of such an example would be Autonomous Race Cars where
+ the frequency of operation would be nominally around 200 Hz {5ms} with
+ the state, input, and measurement vector dimensions being around 12-15
+ variables{x, y, pitch, roll, yaw, and their derivatives}.
+ In such a case, a simple Single-threaded C implementation cannot be implemented
+ because of the high latency associated with them - 0.2 ms based on our calculati
+ons{we considered lower-dimensional measurement and input matrices in our
+ profiling} which is comparable.
+ HLS, Bluespec, and Task-Parallelized implementations can be used.
+\end_layout
+
+\begin_layout Part
+Work distribution
+\end_layout
+
+\begin_layout Itemize
+Baseline C: AMS, Saurav
+\end_layout
+
+\begin_layout Itemize
+OpenMP: Surya
+\end_layout
+
+\begin_layout Itemize
+Bluespec (mat-mul, mat-inv, and other operations): Saurav
+\end_layout
+
+\begin_layout Itemize
+Bluespec (top module): Surya, Saurav
+\end_layout
+
+\begin_layout Itemize
+Analysis: Saurav, AMS
+\end_layout
+
+\begin_layout Itemize
+Vitis HLS: AMS, Surya
+\end_layout
+
+\begin_layout Itemize
+Profiling: AMS
+\end_layout
+
+\end_body
+\end_document
