@@ -8,9 +8,10 @@ typedef FixedPoint#(`bits_int, `bits_frac) SysType;
 typedef Vector#(`STATE_DIM, Reg#(SysType)) VecTypeSD;
 typedef Vector#(`INPUT_DIM, Reg#(SysType)) VecTypeID;
 typedef Vector#(`MEASUREMENT_DIM, Reg#(SysType)) VecTypeMD;
-typedef Vector#(`MEASUREMENT_DIM, SysType) VecTypeMD;
+typedef Vector#(`MEASUREMENT_DIM, SysType) VecType;
 typedef Vector#(`MEASUREMENT_DIM, Vector#(`MEASUREMENT_DIM, SysType)) MatTypeMD_noregs;
 typedef Vector#(`STATE_DIM, Vector#(`STATE_DIM, Reg#(SysType))) MatTypeSD;
+typedef Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) MatTypeSD_noregs;
 
 
 Vector#(`STATE_DIM, Vector#(`INPUT_DIM, SysType)) B = replicate(replicate(0));
