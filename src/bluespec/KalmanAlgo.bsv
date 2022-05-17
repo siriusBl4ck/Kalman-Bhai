@@ -3,6 +3,8 @@ package KalmanAlgo;
 `include "types.bsv"
 
 import vector_dot::*;
+import mat_mult_systolic::*;
+import total_mat_inv::*;
 
 interface Kalman_Ifc;
 	method Action put_xk_uk (VecTypeSD inp_xk, VecTypeID inp_uk);
@@ -17,6 +19,7 @@ endinterface
 module mkKalman(Kalman_Ifc);
 	// To put a constraint on resources only 2 vector dot modules are needed
 	Vector_Ifc#(SysType) vdot1 <- mkVectorDot, vdot2 <- mkVectorDot;
+	Ifc_mat_mult_systolic mat_mul <- mat_mult_systolic;
 	
 	VecTypeSD xk <- replicateM(mkReg(defaultValue));
 	VecTypeMD yk <- replicateM(mkReg(defaultValue));
@@ -42,6 +45,7 @@ module mkKalman(Kalman_Ifc);
 
 	//State update vars
 	Reg#(int) SU_cntri <- mkReg(0), SU_cntrj <- mkReg(0), SU2_cntr <- mkReg(0);
+	Reg#(int) mul_cntr <- mkReg(0);
 
 
 	// State Predictor (SP) rules
@@ -253,8 +257,11 @@ module mkKalman(Kalman_Ifc);
 
 	//Cov update
 	rule cov_updater (enable_SUb);
-	//Kk*H 
+	//Kk*H
+		
+		VecType 
 
+		mul_cntr <= mul_cntr + 1;
 		Pk_ready <= True;
 	
 	endrule
