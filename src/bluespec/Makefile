@@ -5,7 +5,7 @@ default:
 	@echo "To compile KalmanAlgo.bsv, run make kalman"
 
 kalman:
-	bsc -verilog -vdir verilog -bdir bsv_build -u KalmanAlgo.bsv 
+	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_top_module.bsv 
 
 mat_mult: 
 	@echo "Compiling tb_mat_mult.bsv..."

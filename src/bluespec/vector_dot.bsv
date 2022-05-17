@@ -1,6 +1,7 @@
 package vector_dot;
 
-interface Vector_ifc#(type t);
+
+interface VectorDot_ifc#(type t);
     method Action put_a (t input1);     //Method to put the value of an element of the first vector.
     method Action put_b (t input2);     //Method to put the value of an element of the second vector.
     method Action end_value (Bool d_a); //Method to pass the flag to indicate if the inputs passed are the last
@@ -8,18 +9,18 @@ interface Vector_ifc#(type t);
     method Bool final_done;             //Method to check if output is ready
 endinterface
 
-(* synthesize *)
-module mkVectorDot(Vector_ifc#(M_type));
+//(* synthesize *)
+module mkVectorDot(VectorDot_ifc#(t)) provisos (Bits#(t, st), Arith#(t));
     
     //Stage 1 registers
-    Reg#(Maybe#(M_type)) a <- mkReg(tagged Invalid);
-    Reg#(Maybe#(M_type)) b <- mkReg(tagged Invalid);
+    Reg#(Maybe#(t)) a <- mkReg(tagged Invalid);
+    Reg#(Maybe#(t)) b <- mkReg(tagged Invalid);
     Reg#(Bool) flag_stage1 <- mkReg(True);  
 
     //Stage 2 registers
-    Reg#(Maybe#(M_type)) prod <- mkReg(unpack(0));      
-    Reg#(M_type) accum_sum    <- mkReg(unpack(0));
-    Reg#(M_type) final_result <- mkReg(unpack(0));
+    Reg#(Maybe#(t)) prod <- mkReg(unpack(0));      
+    Reg#(t) accum_sum    <- mkReg(unpack(0));
+    Reg#(t) final_result <- mkReg(unpack(0));
     Reg#(Bool) flag_stage2    <- mkReg(True);
 
     //Stage 3 registers
@@ -67,11 +68,11 @@ module mkVectorDot(Vector_ifc#(M_type));
     endrule
 
 
-    method Action put_a (M_type input1);
+    method Action put_a (t input1);
         a <= tagged Valid(input1);
     endmethod
     
-    method Action put_b (M_type input2);
+    method Action put_b (t input2);
         b <= tagged Valid(input2);
     endmethod
     
@@ -81,7 +82,7 @@ module mkVectorDot(Vector_ifc#(M_type));
 
 
     //Stage 3
-    method ActionValue#(M_type) dot_result if (flag_stage3);
+    method ActionValue#(t) dot_result if (flag_stage3);
         flag_stage3 <= False;   
         return final_result;
     endmethod

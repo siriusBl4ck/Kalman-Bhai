@@ -19,7 +19,7 @@ package mat_mult_systolic;
         //Reg#(MatType) C <- mkReg(defaultValue);
 
         Wire#(VecType) inp_Astream <- mkDWire(replicate(0)), inp_Bstream <- mkDWire(replicate(0));
-        Wire#(MatType) out_C <- mkDWire (replicate(replicate(0)));
+        Wire#(VecType) out_C <- mkDWire (replicate(0));
 
         PulseWire starter <- mkPulseWire;
         PulseWire out_ready <- mkPulseWire;
@@ -53,13 +53,13 @@ package mat_mult_systolic;
             for(int i=0; i<`MAT_DIM; i=i+1) begin
                 if ((cntr-i < `MAT_DIM) &&(i<=cntr)) begin
                     // Pk*F.Transpose
-                    inp_Astream[i] <= Pk[i][CP_cntr-i];
-                    inp_Bstream[i] <= F[i][CP_cntr-i];
+                    inp_Astream[i] <= inpA[i][cntr-i];
+                    inp_Bstream[i] <= inpB[i][cntr-i];
                 end 
             end
         endmethod
 
-        method getC (VecType C) if (out_ready);
+        method VecType getC if (out_ready);
             return out_C;
         endmethod
 

@@ -3,7 +3,7 @@ import Vector::*;
 
 `include "params.bsv"
 
-`define MAT_DIM 3
+`define MAT_DIM 6
 
 
 typedef FixedPoint#(`bits_int, `bits_frac) SysType;
@@ -22,7 +22,7 @@ typedef Vector#(`MAT_DIM, SysType) VecType;
 Vector#(`STATE_DIM, Vector#(`INPUT_DIM, SysType)) sysB = replicate(replicate(0));
 Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) sysF = replicate(replicate(0));
 
-
+Vector#(`MEASUREMENT_DIM, Vector#(`MEASUREMENT_DIM, SysType)) sysR = replicate(replicate(0));
 
 Vector#(`MEASUREMENT_DIM, Vector#(`STATE_DIM, SysType)) sysH = replicate(replicate(0));
 
