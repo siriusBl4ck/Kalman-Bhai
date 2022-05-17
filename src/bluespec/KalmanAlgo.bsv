@@ -17,8 +17,9 @@ endinterface
 module mkKalman(Kalman_Ifc);
 	// To put a constraint on resources only 2 vector dot modules are needed
 	Vector_Ifc#(SysType) vdot1 <- mkVectorDot, vdot2 <- mkVectorDot;
-	Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
-	
+	//Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
+	Ifc_mat_imm mult_mod <- mkmat_imm;
+
 	VecTypeSD xk <- replicateM(mkReg(defaultValue));
 	VecTypeMD yk <- replicateM(mkReg(defaultValue));
 	VecTypeMD zk <- replicateM(mkReg(defaultValue));
@@ -177,7 +178,18 @@ module mkKalman(Kalman_Ifc);
 
 	//Cov predictor Rules
 	rule cov_predict1 (enable_CP1);
-		VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
+		MatType tempF = defaultValue;
+		
+		for(int i=0; i<`MAT_DIM; i=i+1)
+			for(int j=0; j<`MAT_DIM; j=j+1)
+				tempF[i][j] = F[j][i];
+
+		mult_mod.putAB(Pk, tempF);
+		mult_mod.start;
+	endrule
+
+
+		/*VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
 
 		if (CP_cntr == 3*`MAT_DIM+5) begin
 			CP_cntr <= 0;
@@ -197,17 +209,21 @@ module mkKalman(Kalman_Ifc);
 
 		mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
 	endrule
+	int k = CP_cntr - i - `MAT_DIM - 7;*/
 
 	rule store_L1 (enable_CP1);
-		let out_stream = mult_mod.get_out_stream;
+		let out_stream = mult_mod.getC;
+		let k = mult_mod.getk;
 
 		for (int i=0; i<`MAT_DIM; i=i+1) begin
-			int k = CP_cntr - i - `MAT_DIM - 7;
-
-			if ((k>=0) && (k<`MAT_DIM)) begin
-				L1[i][k] <= out_stream[i];
+			if ((k>=i) && (k-i<`MAT_DIM)) begin
+				L1[i][k-i] <= out_stream[i];
 			end 
 		end
+
+		if (k==2*`MAT_DIM-2) begin
+			enable_CP1 <= False;
+			enable_CP2 <= True;
 	endrule
 
 	rule cov_predict2 (enable_CP2);

@@ -7,6 +7,69 @@ package mat_mult_systolic;
     import FixedPoint::*;
     `include "types.bsv"
 
+    interface Ifc_mat_imm;
+        method Action putAB (MatType inpA, MatType inpB);
+        method Action start;
+        method VecType getC;
+        method int getk;
+    endinterface
+
+    module mkmat_imm (Ifc_mat_imm);
+        Reg#(int) cntr <- mkReg(0);
+        //Reg#(MatType) C <- mkReg(defaultValue);
+
+        Wire#(VecType) inp_Astream <- mkDWire(replicate(0)), inp_Bstream <- mkDWire(replicate(0));
+        Wire#(MatType) out_C <- mkDWire (replicate(replicate(0)));
+
+        PulseWire starter <- mkPulseWire;
+        PulseWire out_ready <- mkPulseWire;
+
+    	Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
+
+        
+        rule r1 (starter);
+            mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
+
+            if (cntr == 3*`MAT_DIM+5) begin
+                cntr <= 0;
+            end
+            else
+                cntr <= cntr+1;
+        endrule
+
+        rule r2 (starter);
+            let z = mult_mod.get_out_stream;
+            out_C <= z;
+            out_ready.send();
+        endrule
+
+
+        method Action start;
+            starter.send();
+        endmethod
+
+
+        method Action putAB (MatType inpA, MatType inpB);
+            for(int i=0; i<`MAT_DIM; i=i+1) begin
+                if ((cntr-i < `MAT_DIM) &&(i<=cntr)) begin
+                    // Pk*F.Transpose
+                    inp_Astream[i] <= Pk[i][CP_cntr-i];
+                    inp_Bstream[i] <= F[i][CP_cntr-i];
+                end 
+            end
+        endmethod
+
+        method getC (VecType C) if (out_ready);
+            return out_C;
+        endmethod
+
+        method int getk if (out_ready);
+            return cntr-`MAT_DIM-7;
+        endmethod
+    endmodule
+
+
+
     interface Ifc_mat_mult_systolic;
         method Action feed_inp_stream(VecType a_stream, VecType b_stream);
         method VecType get_out_stream;
