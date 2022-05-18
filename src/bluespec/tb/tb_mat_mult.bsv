@@ -58,7 +58,6 @@ module tb_mat_mult(Empty);
         if (rg_cntr >= 1 && rg_cntr <= 5)
             myMult.feed_inp_stream(inp_Astream, inp_Bstream);
         
-
         if (rg_cntr == 20) $finish();
     endrule
 

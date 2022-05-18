@@ -12,7 +12,7 @@ kalman:
 mat_mult: 
 	@echo "Compiling tb_mat_mult.bsv..."
 	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_mult.bsv
-	bsc -vdir verilog -e tb_mat_mult -u verilog/mk_tb_mult.v
+	bsc -vdir verilog -e mk_tb_mult -u verilog/mk_tb_mult.v
 	./a.out
 
 pe:

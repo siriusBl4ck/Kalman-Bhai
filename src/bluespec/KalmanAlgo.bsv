@@ -223,13 +223,15 @@ module mkKalman(Kalman_Ifc);
 			end
 
 		mult_mod.putAB(temppk, tempF);
+		enable_CP1 <= False;
+		enable_storeL1 <= True;
 		//mult_mod.start;
 	endrule
 
-	rule store_L1 (enable_CP1);
+	rule store_L1 (enable_storeL1);
 		$display($time, "store_L1");
-		let out_stream = mult_mod.getC;
-		let k = mult_mod.getk;
+		let out_stream <- mult_mod.getC;
+		/*let k = mult_mod.getk;
 
 		for (int i=0; i<`MAT_DIM; i=i+1) begin
 			if ((k>=i) && (k-i<`MAT_DIM)) begin
@@ -239,9 +241,10 @@ module mkKalman(Kalman_Ifc);
 		end
 
 		if (k==2*`MAT_DIM-2) begin
-			enable_CP1 <= False;
+			enable_storeL1 <= False;
 			enable_CP2 <= True;
-		end
+		end*/
+
 	endrule
 
 	rule cov_predict2 (enable_CP2);

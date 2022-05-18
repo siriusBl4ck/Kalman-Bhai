@@ -9,85 +9,116 @@ package mat_mult_systolic;
 
     interface Ifc_mat_imm;
         method Action putAB (MatType inpA, MatType inpB);
-        method Action rst;
-        method VecType getC;
-        method int getk;
+        method ActionValue#(MatType) getC;
     endinterface
 
-module mkmat_imm(Ifc_mat_imm);
-    Ifc_mat_mult_systolic myMult <- mat_mult_systolic;
-    
-    Reg#(VecType) inp_Astream <- mkReg(unpack(0));
-    Reg#(VecType) inp_Bstream <- mkReg(unpack(0));
-    Reg#(VecType) out_stream <- mkReg(unpack(0));
-    Reg#(MatType) matA <- mkReg(replicate(replicate(unpack(0))));
-    Reg#(MatType) matB <- mkReg(replicate(replicate(unpack(0))));
-    Reg#(int) rg_cntr <- mkReg(0);
-    Reg#(Bool) inp_rdy <- mkReg(False), out_rdy <- mkDWire(False);
+    module mkmat_imm(Ifc_mat_imm);
+        Ifc_mat_mult_systolic myMult <- mat_mult_systolic;
+        
+        //Reg#(VecType) inp_Astream <- mkReg(unpack(0));
+        //Reg#(VecType) inp_Bstream <- mkReg(unpack(0));
+        //Reg#(VecType) out_stream <- mkReg(unpack(0));
+        Reg#(MatType) out_mat <- mkReg(replicate(replicate(unpack(0))));
+        Reg#(MatType) matA <- mkReg(replicate(replicate(unpack(0)))), matB <- mkReg(replicate(replicate(unpack(0))));
+        Reg#(int) rg_cntr <- mkReg(0);
+        Reg#(Bool) inp_rdy <- mkReg(False), out_rdy <- mkReg(False);
 
-    rule cntr;
-        if (inp_rdy) rg_cntr <= rg_cntr + 1;
-        else rg_cntr <= 0;
-    endrule
-
-    rule feed_stream;
-        // if (inp_rdy && rg_cntr <= 2 * `MAT_DIM - 1)
-        //     myMult.feed_inp_stream(inp_Astream, inp_Bstream);
-    endrule
-
-    rule make_streams (inp_rdy);
-        VecType a_in = replicate(0);
-        VecType b_in = replicate(0);
-        for(int i=0; i<`MAT_DIM; i=i+1) begin
-            if ((rg_cntr-i < `MAT_DIM) &&(i<=rg_cntr)) begin
-                a_in[i] = matB[i][rg_cntr-i];
-                b_in[i] = matA[rg_cntr-i][i];
-
-                //$display("\nlvA[%d, %d]\n", i, rg_cntr-i);
-                //fxptWrite(5, lv_mat_A[i][rg_cntr-i]);
-                $display("\na\n");
-                fxptWrite(5, a_in[i]);
-                $display("\nb\n");
-                fxptWrite(5, b_in[i]);
+        rule cntr (!inp_rdy);
+            if (rg_cntr == 3*`MAT_DIM+5) begin
+                rg_cntr <= 0;
+                out_rdy <= True;
+            end 
+            else begin
+                rg_cntr <= rg_cntr+1;
             end
-        end 
+            
+            //$display("hi %d\n", rg_cntr);
+        endrule
 
-        // inp_Astream <= a_in;
-        // inp_Bstream <= b_in;
+        rule make_streams (!inp_rdy);
+            VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
 
-        if (inp_rdy && rg_cntr <= 2 * `MAT_DIM - 1)
-            myMult.feed_inp_stream(a_in, b_in);
-    endrule
+            for(int i=0; i<`MAT_DIM; i=i+1) begin
+                if ((rg_cntr-i < `MAT_DIM) &&(i<=rg_cntr)) begin
+                    inp_Astream[i] = matA[i][rg_cntr-i];
+                    inp_Bstream[i] = matB[rg_cntr-i][i];
+                    
+                    /*if ((inp_Astream[i] != 0) || (inp_Bstream[i] != 0)) begin
+                    $display("\na\n");
+                    fxptWrite(5, inp_Astream[i]);
+                    $display("\nb\n");
+                    fxptWrite(5, inp_Bstream[i]);
+                    end*/
+                end 
+            end
+            /*
+            VecType a_in = replicate(0);
+            VecType b_in = replicate(0);
 
-    method Action putAB (MatType inpA, MatType inpB);
-        matA <= inpA;
-        matB <= inpB;
-        inp_rdy <= True;
-    endmethod
+            if (rg_cntr <= 2 * `MAT_DIM - 1) begin
+                for (int i=0; i<`MAT_DIM; i=i+1) begin
+                    if (inp_Astream[i] !=0) begin
+                        
+                    $display("make_streams %d\n", rg_cntr);
+                    fxptWrite(5, inp_Astream[i]);
+                    $display("\n");
+                    end
+                end 
+            */
 
-    method VecType getC;
-        let z = myMult.get_out_stream;
-        VecType outr = z;
+            myMult.feed_inp_stream(inp_Astream, inp_Bstream);
+        endrule
 
-        return outr;
-    endmethod
+        rule out_stream (!out_rdy);
+            let z <- myMult.get_out_stream;
 
-    method int getk;
-        return rg_cntr-`MAT_DIM-7;
-    endmethod
+            MatType temp_out = replicate(replicate(0));
+            temp_out = out_mat;
 
-    method Action rst;
-        rg_cntr <= 0;
-        inp_rdy <= False;
-        inp_Astream <= unpack(0);
-        inp_Bstream <= unpack(0);
-    endmethod
-endmodule
+            for (int i=0; i<`MAT_DIM; i=i+1) begin
+                int k = rg_cntr-i-`MAT_DIM-2;
+                //$display("\nincoming %d\n", k);
+                //fxptWrite(5, z[i]);
+                //$display("\n");
+                if ((k>=0) && (k < `MAT_DIM)) begin
+                    temp_out[i][k] = z[i];
+                    /*$display($time, " hooo %d,%d, %d\n", i, k, rg_cntr);
+                    if (z[i] != 0) fxptWrite(5, z[i]);*/
+                end
+            end
+            out_mat <= temp_out;
+/*$display("out\n");
+            for (int i=0; i<`MAT_DIM; i=i+1) begin
+                for(int j=0; j<`MAT_DIM; j=j+1) begin
+                    $display(" ");
+                    fxptWrite(5, out_mat[i][j]);
+                end
+                $display("\n");*/
+            //end
+
+
+        endrule
+
+
+        method Action putAB (MatType inpA, MatType inpB) if (inp_rdy);
+            matA <= inpA;
+            matB <= inpB;
+            inp_rdy <= False;
+            out_rdy <= False;
+        endmethod
+
+        method ActionValue#(MatType) getC if (out_rdy);
+            //$display("hi");
+            inp_rdy <= True;
+            myMult.reset_mod;
+            return out_mat;
+        endmethod
+    endmodule
 
 
     interface Ifc_mat_mult_systolic;
         method Action feed_inp_stream(VecType a_stream, VecType b_stream);
-        method VecType get_out_stream;
+        method ActionValue#(VecType) get_out_stream;
         method Action reset_mod;
     endinterface
 
@@ -148,7 +179,7 @@ endmodule
         endrule
 
         method Action feed_inp_stream(VecType a_stream, VecType b_stream);
-            $display($time, "\nfeed_inp %d\n", cntr);
+            //$display($time, "\nfeed_inp %d\n", cntr);
             for (int i = 0; i < `MAT_DIM; i = i + 1) begin
                 wr_inp_a[i] <= a_stream[i];
                 wr_inp_b[i] <= b_stream[i];
@@ -160,13 +191,16 @@ endmodule
         endmethod
 
 
-        method VecType get_out_stream if (cntr > `MAT_DIM);
+        method ActionValue#(VecType) get_out_stream if (cntr > `MAT_DIM);
             VecType out_stream = replicate(0);
-            
 
             for (int i=0; i<`MAT_DIM; i=i+1) begin
-                if (cntr-i-`MAT_DIM-1 < `MAT_DIM)
+                if (cntr-i-`MAT_DIM-1 < `MAT_DIM) begin
                     out_stream[i] = pe[i][cntr-i-`MAT_DIM-1].getC();
+                    $display("\n", $time, "get_out:");
+                    fxptWrite(5, out_stream[i]);
+                    $display("\n");
+                end
             end
             return out_stream;
         endmethod

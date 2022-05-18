@@ -24,6 +24,7 @@ package pe;
         Reg#(SysType) rg_out_b <- mkReg(unpack(0));
         Reg#(SysType) rg_out_c <- mkReg(unpack(0));
         Reg#(Bool) valid_a_b <- mkReg(False);
+        PulseWire reset_sig <- mkPulseWire;
 
         rule mac;
             if (wr_valid_a && wr_valid_b) begin
@@ -37,7 +38,7 @@ package pe;
                 valid_a_b <= False;
         endrule
 
-        rule propagate;
+        rule propagate (wr_valid_a && wr_valid_b);
             rg_out_a <= wr_in_a;
             rg_out_b <= wr_in_b;
         endrule
@@ -59,11 +60,10 @@ package pe;
         method Bool validAB = valid_a_b;
         method SysType getC = rg_out_c;
 
-        method Action reset_mod;
+        method Action reset_mod if ((!wr_valid_a) && (!wr_valid_b));
             rg_out_a <= 0;
             rg_out_b <= 0;
             rg_out_c <= 0;
-            valid_a_b <= False;
         endmethod
     endmodule
 endpackage
