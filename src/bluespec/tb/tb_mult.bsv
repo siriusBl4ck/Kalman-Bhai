@@ -7,9 +7,13 @@ import mat_mult_systolic::*;
 (*synthesize*)
 module mk_tb_mult(Empty);
     Ifc_mat_imm mult_mod <- mkmat_imm;
-    MatTypeSD immL2 <- replicateM(replicateM(mkReg(0))), immL1 <- replicateM(replicateM(mkReg(0)));
+    MatTypeSD immL2 <- replicateM(replicateM(mkReg(0)));
+    Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) immL1 = replicate(replicate(unpack(0)));
+    for (int i = 0; i < `STATE_DIM; i = i + 1) immL1[i][i] = fromRational(1, 1);
     Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) sysF1 = replicate(replicate(0));
     
+    Reg#(int) rg_cntr <- mkReg(0);
+
     sysF1[0][0] = 1;
     sysF1[0][1] = 1;
     sysF1[0][2] = fromRational(1, 2);
@@ -49,7 +53,41 @@ module mk_tb_mult(Empty);
 					immL2[i][k-i] <= out_stream[i];
 			end
 		end
-        $finish();
+
+        $display("immL2");
+        for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+            for (int j = 0; j < `STATE_DIM; j = j + 1) begin
+                fxptWrite(3, immL2[i][j]);
+                $write("   ");
+            end
+            $write("\n\n");
+        end
+        $display("--------------------");
+        
+        if (rg_cntr == 0) begin
+            $display("sysF");
+            for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+                for (int j = 0; j < `STATE_DIM; j = j + 1) begin
+                    fxptWrite(3, sysF[i][j]);
+                    $write("       ");
+                end
+                $write("\n\n");
+            end
+            $display("--------------------");
+            $display("immL1");
+            for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+                for (int j = 0; j < `STATE_DIM; j = j + 1) begin
+                    fxptWrite(3, immL1[i][j]);
+                    $write("       ");
+                end
+                $write("\n\n");
+            end
+            $display("--------------------");
+        end
+
+        rg_cntr <= rg_cntr + 1;
+
+        if (rg_cntr == 20) $finish();        
     endrule
 endmodule
 

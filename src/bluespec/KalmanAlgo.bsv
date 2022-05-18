@@ -106,6 +106,11 @@ module mkKalman(Kalman_Ifc);
 		immM[sp2a_cntr] <= za;
 		
 		if (sp2a_cntr == `STATE_DIM-1) begin
+			for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+				fxptWrite(5, immM[i]);
+				$write(" ");
+			end
+			$write("\n");
 			sp2a_cntr <= 0;
 			enable_sp2a <= True;
 			enable_storeM <= False;
@@ -142,6 +147,11 @@ module mkKalman(Kalman_Ifc);
 		immN[sp2b_cntr] <= zb;
 		
 		if (sp2b_cntr == `STATE_DIM-1) begin
+			for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+				fxptWrite(5, immN[i]);
+				$write(" ");
+			end
+			$write("\n");
 			sp2b_cntr <= 0;
 			enable_sp2b <= True;
 			enable_storeN <= False;
@@ -152,8 +162,12 @@ module mkKalman(Kalman_Ifc);
 
 	rule state_predictor2 (enable_sp2a && enable_sp2b);
 		$display($time, "state_predictor2");
-		for (int i=0; i<`STATE_DIM; i=i+1)
+		for (int i=0; i<`STATE_DIM; i=i+1) begin
 			xk[i] <= immM[i] + immN[i];
+			fxptWrite(5, immM[i] + immN[i]);
+			$write(" ");
+		end
+		$write("\n");
 
 		enable_sp2a <= False;
 		enable_sp2b <= False;
@@ -190,6 +204,11 @@ module mkKalman(Kalman_Ifc);
 		immE[mr2_cntr] <= ze;
 
 		if (mr2_cntr == `MEASUREMENT_DIM-1) begin
+			for (int i = 0; i < `MEASUREMENT_DIM; i = i + 1) begin
+				fxptWrite(5, immE[i]);
+				$write(" ");
+			end
+			$write("\n");
 			mr2_cntr <= 0;
 			enable_MR2 <= True;
 			enable_storeE <= False;
@@ -200,8 +219,12 @@ module mkKalman(Kalman_Ifc);
 
 	rule measurement_residual2 (enable_MR2 && zk_valid);
 		$display($time, "measurement_residual2");
-		for (int i=0; i<`MEASUREMENT_DIM; i=i+1)
+		for (int i=0; i<`MEASUREMENT_DIM; i=i+1) begin
 			yk[i] <= zk[i] - immE[i];
+			fxptWrite(5, zk[i] - immE[i]);
+			$write(" ");
+		end
+		$write("\n");
 		
 		enable_MR2 <= False;
 		enable_SUa <= True;
@@ -230,6 +253,7 @@ module mkKalman(Kalman_Ifc);
 		$display($time, "store_L1");
 		let out_stream = mult_mod.getC;
 		let k = mult_mod.getk;
+		mult_mod.rst;
 
 		for (int i=0; i<`MAT_DIM; i=i+1) begin
 			if ((k>=i) && (k-i<`MAT_DIM)) begin
@@ -241,6 +265,14 @@ module mkKalman(Kalman_Ifc);
 		if (k==2*`MAT_DIM-2) begin
 			enable_CP1 <= False;
 			enable_CP2 <= True;
+
+			for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+				for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+					fxptWrite(5, immL1[i][j]);
+					$write(" ");
+				end
+				$write("\n");
+			end
 		end
 	endrule
 
@@ -273,6 +305,13 @@ module mkKalman(Kalman_Ifc);
 		end
 
 		if (k==2*`MAT_DIM-2) begin
+			for (int i = 0; i < `MAT_DIM; i = i + 1) begin
+				for (int j = 0; j < `MAT_DIM; j = j + 1) begin
+					fxptWrite(5, immL2[i][j]);
+					$write(" ");
+				end
+				$write("\n");
+			end
 			enable_CP1 <= False;
 			enable_CP2 <= True;
 		end
@@ -568,11 +607,13 @@ module mkKalman(Kalman_Ifc);
 			fxptWrite(3, inp_xk[i]);
 			$write(" ");
 		end
+		$write("\n");
 		for (int i = 0; i < `INPUT_DIM; i = i + 1) begin
 			uk[i] <= inp_uk[i];
 			fxptWrite(3, inp_xk[i]);
 			$write(" ");
 		end
+		$write("\n");
 		
 		enable_SP1a <= True;
 		enable_SP1b <= True;
@@ -583,14 +624,22 @@ module mkKalman(Kalman_Ifc);
 		for (int i = 0; i < `STATE_DIM; i = i + 1) begin
 			for (int j = 0; j < `STATE_DIM; j = j + 1) begin
 				pk[i][j] <= inp_pk[i][j];
+				fxptWrite(3, inp_pk[i][j]);
+				$write(" ");
 			end
+			$write("\n");
 		end
 		
 		enable_CP1 <= True;
 	endmethod
 
 	method Action put_zk (Vector#(`MEASUREMENT_DIM, SysType) inp_zk);
-		for (int i = 0; i < `MEASUREMENT_DIM; i = i + 1) zk[i] <= inp_zk[i];
+		for (int i = 0; i < `MEASUREMENT_DIM; i = i + 1) begin
+			zk[i] <= inp_zk[i];
+			fxptWrite(3, inp_zk[i]);
+			$write(" ");
+		end
+		$write("\n");
 		
 		zk_valid <= True;
 	endmethod

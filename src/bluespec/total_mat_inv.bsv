@@ -162,8 +162,9 @@ module mk_mat_inv(Ifc_mat_inv);
                 $display("\n");
             end
         end
-
-        if (c == `MEASUREMENT_DIM) begin
+    
+        if (a_valid && c == `MEASUREMENT_DIM) begin
+            $display($time, "mat_inverse");
             for (int i = 0; i < `MEASUREMENT_DIM; i = i + 1) begin
                 for (int j = 0; j < `MEASUREMENT_DIM; j = j + 1) begin
                     FixedPoint#(33,16) lv_res = fxptQuot(a_inv[i][j], a[i][i]);
