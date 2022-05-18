@@ -9,65 +9,80 @@ package mat_mult_systolic;
 
     interface Ifc_mat_imm;
         method Action putAB (MatType inpA, MatType inpB);
-        method Action start;
+        method Action rst;
         method VecType getC;
         method int getk;
     endinterface
 
-    module mkmat_imm (Ifc_mat_imm);
-        Reg#(int) cntr <- mkReg(0);
-        //Reg#(MatType) C <- mkReg(defaultValue);
+module mkmat_imm(Ifc_mat_imm);
+    Ifc_mat_mult_systolic myMult <- mat_mult_systolic;
+    
+    Reg#(VecType) inp_Astream <- mkReg(unpack(0));
+    Reg#(VecType) inp_Bstream <- mkReg(unpack(0));
+    Reg#(VecType) out_stream <- mkReg(unpack(0));
+    Reg#(MatType) matA <- mkReg(replicate(replicate(unpack(0))));
+    Reg#(MatType) matB <- mkReg(replicate(replicate(unpack(0))));
+    Reg#(int) rg_cntr <- mkReg(0);
+    Reg#(Bool) inp_rdy <- mkReg(False), out_rdy <- mkDWire(False);
 
-        Wire#(VecType) inp_Astream <- mkDWire(replicate(0)), inp_Bstream <- mkDWire(replicate(0));
-        Wire#(VecType) out_C <- mkDWire (replicate(0));
+    rule cntr;
+        if (inp_rdy) rg_cntr <= rg_cntr + 1;
+        else rg_cntr <= 0;
+    endrule
 
-        PulseWire starter <- mkPulseWire;
-        PulseWire out_ready <- mkPulseWire;
+    rule feed_stream;
+        // if (inp_rdy && rg_cntr <= 2 * `MAT_DIM - 1)
+        //     myMult.feed_inp_stream(inp_Astream, inp_Bstream);
+    endrule
 
-    	Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
+    rule make_streams (inp_rdy);
+        VecType a_in = replicate(0);
+        VecType b_in = replicate(0);
+        for(int i=0; i<`MAT_DIM; i=i+1) begin
+            if ((rg_cntr-i < `MAT_DIM) &&(i<=rg_cntr)) begin
+                a_in[i] = matB[i][rg_cntr-i];
+                b_in[i] = matA[rg_cntr-i][i];
 
-        
-        rule r1 (starter);
-            mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
-
-            if (cntr == 3*`MAT_DIM+5) begin
-                cntr <= 0;
+                //$display("\nlvA[%d, %d]\n", i, rg_cntr-i);
+                //fxptWrite(5, lv_mat_A[i][rg_cntr-i]);
+                $display("\na\n");
+                fxptWrite(5, a_in[i]);
+                $display("\nb\n");
+                fxptWrite(5, b_in[i]);
             end
-            else
-                cntr <= cntr+1;
-        endrule
+        end 
 
-        rule r2 (starter);
-            let z = mult_mod.get_out_stream;
-            out_C <= z;
-            out_ready.send();
-        endrule
+        // inp_Astream <= a_in;
+        // inp_Bstream <= b_in;
 
+        if (inp_rdy && rg_cntr <= 2 * `MAT_DIM - 1)
+            myMult.feed_inp_stream(a_in, b_in);
+    endrule
 
-        method Action start;
-            starter.send();
-        endmethod
+    method Action putAB (MatType inpA, MatType inpB);
+        matA <= inpA;
+        matB <= inpB;
+        inp_rdy <= True;
+    endmethod
 
+    method VecType getC;
+        let z = myMult.get_out_stream;
+        VecType outr = z;
 
-        method Action putAB (MatType inpA, MatType inpB);
-            for(int i=0; i<`MAT_DIM; i=i+1) begin
-                if ((cntr-i < `MAT_DIM) &&(i<=cntr)) begin
-                    // Pk*F.Transpose
-                    inp_Astream[i] <= inpA[i][cntr-i];
-                    inp_Bstream[i] <= inpB[i][cntr-i];
-                end 
-            end
-        endmethod
+        return outr;
+    endmethod
 
-        method VecType getC if (out_ready);
-            return out_C;
-        endmethod
+    method int getk;
+        return rg_cntr-`MAT_DIM-7;
+    endmethod
 
-        method int getk if (out_ready);
-            return cntr-`MAT_DIM-7;
-        endmethod
-    endmodule
-
+    method Action rst;
+        rg_cntr <= 0;
+        inp_rdy <= False;
+        inp_Astream <= unpack(0);
+        inp_Bstream <= unpack(0);
+    endmethod
+endmodule
 
 
     interface Ifc_mat_mult_systolic;

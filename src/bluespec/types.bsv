@@ -65,5 +65,4 @@ sysQ[3][5] = fromRational(2, 100);
 sysQ[4][3] = fromRational(2, 100);
 sysQ[4][4] = fromRational(4, 100);
 sysQ[4][5] = fromRational(4, 100);
-
 */

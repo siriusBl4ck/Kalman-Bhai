@@ -55,38 +55,9 @@ module tb_mat_mult(Empty);
     endrule
 
     rule feed_stream;
-        if (rg_cntr >= 1 && rg_cntr <= 5) 
+        if (rg_cntr >= 1 && rg_cntr <= 5)
             myMult.feed_inp_stream(inp_Astream, inp_Bstream);
         
-        if (rg_cntr >= 1) begin
-            //get the result back
-            /*MatType output_mat = myMult.get_out_stream();
-            //out_stream <= output_mat;
-            
-            SysType c[3][3];
-
-            c[0][0] = output_mat[0][0];
-            c[0][1] = output_mat[0][1];
-            c[0][2] = output_mat[0][2];
-
-            c[1][0] = output_mat[1][0];
-            c[1][1] = output_mat[1][1];
-            c[1][2] = output_mat[1][2];
-
-            c[2][0] = output_mat[2][0];
-            c[2][1] = output_mat[2][1];
-            c[2][2] = output_mat[2][2];*/
-            
-            $display($time, " [systole]\n");
-            
-            /*for (int i = 0; i < 3; i = i + 1) begin
-                for (int j = 0; j < 3; j = j + 1) begin
-                    fxptWrite(1, c[i][j]);
-                    $write(" ");
-                end
-                $display("\n");
-            end*/
-        end
 
         if (rg_cntr == 20) $finish();
     endrule

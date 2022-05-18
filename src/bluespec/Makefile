@@ -6,11 +6,13 @@ default:
 
 kalman:
 	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_top_module.bsv 
+	bsc -vdir verilog -e mk_tb_top_module -u verilog/mk_tb_top_module.v
+	timeout 10 ./a.out > test.log
 
 mat_mult: 
 	@echo "Compiling tb_mat_mult.bsv..."
-	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_mat_mult.bsv
-	bsc -vdir verilog -e tb_mat_mult -u verilog/tb_mat_mult.v
+	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_mult.bsv
+	bsc -vdir verilog -e tb_mat_mult -u verilog/mk_tb_mult.v
 	./a.out
 
 pe:
