@@ -7,9 +7,13 @@ import mat_mult_systolic::*;
 (*synthesize*)
 module mk_tb_mult(Empty);
     Ifc_mat_imm mult_mod <- mkmat_imm;
-    MatTypeSD immL2 <- replicateM(replicateM(mkReg(0))), immL1 <- replicateM(replicateM(mkReg(0)));
+    MatTypeSD immL2 <- replicateM(replicateM(mkReg(0)));
+    Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) immL1 = replicate(replicate(unpack(0)));
+    for (int i = 0; i < `STATE_DIM; i = i + 1) immL1[i][i] = fromRational(1, 1);
     Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) sysF1 = replicate(replicate(0));
     
+    Reg#(int) rg_cntr <- mkReg(0);
+
     sysF1[0][0] = 1;
     sysF1[0][1] = 2;
     sysF1[0][2] = fromRational(1, 2);

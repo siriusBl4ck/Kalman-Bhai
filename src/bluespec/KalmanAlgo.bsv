@@ -231,6 +231,9 @@ module mkKalman(Kalman_Ifc);
 	rule store_L1 (enable_storeL1);
 		$display($time, "store_L1");
 		let out_stream <- mult_mod.getC;
+
+		for (int i=0; i<`)
+
 		/*let k = mult_mod.getk;
 
 		for (int i=0; i<`MAT_DIM; i=i+1) begin
