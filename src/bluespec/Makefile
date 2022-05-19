@@ -6,8 +6,8 @@ default:
 
 kalman:
 	bsc -verilog -vdir verilog -bdir bsv_build -u tb/tb_top_module.bsv 
-	bsc -vdir verilog -e mk_tb_top_module -u verilog/mk_tb_top_module.v
-	timeout 10 ./a.out > test.log
+	bsc -vsim iverilog -vdir verilog -e mk_tb_top_module -u verilog/mk_tb_top_module.v
+	# timeout 120 ./a.out > test.log
 
 mat_mult: 
 	@echo "Compiling tb_mat_mult.bsv..."
@@ -29,5 +29,5 @@ mat_inv:
 
 clean:
 	rm verilog/* bsv_build/* a.out
-	rm -rf web* xsim* xel* .Xil
+	rm -rf web* xsim* xel* .Xil xsim.dir/*
 	rm *.tcl *.wdb

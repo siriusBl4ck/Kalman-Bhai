@@ -60,7 +60,7 @@ package pe;
         method Bool validAB = valid_a_b;
         method SysType getC = rg_out_c;
 
-        method Action reset_mod if ((!wr_valid_a) && (!wr_valid_b));
+        method Action reset_mod;
             rg_out_a <= 0;
             rg_out_b <= 0;
             rg_out_c <= 0;

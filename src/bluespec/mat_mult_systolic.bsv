@@ -10,6 +10,8 @@ package mat_mult_systolic;
     interface Ifc_mat_imm;
         method Action putAB (MatType inpA, MatType inpB);
         method ActionValue#(MatType) getC;
+        method Bool is_out_rdy();
+        method Action reset_systole();
     endinterface
 
     module mkmat_imm(Ifc_mat_imm);
@@ -25,14 +27,16 @@ package mat_mult_systolic;
 
         rule cntr (!inp_rdy);
             if (rg_cntr == 3*`MAT_DIM+5) begin
+                $display("[mult] ENDING");
                 rg_cntr <= 0;
+                inp_rdy <= True;
                 out_rdy <= True;
             end 
             else begin
                 rg_cntr <= rg_cntr+1;
             end
             
-            //$display("hi %d\n", rg_cntr);
+            $display("[mult] rg_cntr %d\n", rg_cntr);
         endrule
 
         rule make_streams (!inp_rdy);
@@ -77,41 +81,50 @@ package mat_mult_systolic;
 
             for (int i=0; i<`MAT_DIM; i=i+1) begin
                 int k = rg_cntr-i-`MAT_DIM-2;
-                //$display("\nincoming %d\n", k);
-                //fxptWrite(5, z[i]);
-                //$display("\n");
+                $display("\n[mult]incoming %d\n", k);
+                fxptWrite(5, z[i]);
+                $display("\n");
                 if ((k>=0) && (k < `MAT_DIM)) begin
                     temp_out[i][k] = z[i];
-                    /*$display($time, " hooo %d,%d, %d\n", i, k, rg_cntr);
-                    if (z[i] != 0) fxptWrite(5, z[i]);*/
+                    $display($time, " hooo %d,%d, %d\n", i, k, rg_cntr);
+                    if (z[i] != 0) fxptWrite(5, z[i]);
                 end
             end
             out_mat <= temp_out;
-/*$display("out\n");
+            
+            $display("temp_out\n");
             for (int i=0; i<`MAT_DIM; i=i+1) begin
                 for(int j=0; j<`MAT_DIM; j=j+1) begin
-                    $display(" ");
-                    fxptWrite(5, out_mat[i][j]);
+                    $write(" ");
+                    fxptWrite(5, temp_out[i][j]);
                 end
-                $display("\n");*/
-            //end
+                $write("\n");
+            end
 
 
         endrule
 
 
-        method Action putAB (MatType inpA, MatType inpB) if (inp_rdy);
+        method Action putAB (MatType inpA, MatType inpB);
+            $display("[mult_mod] putAB");
             matA <= inpA;
             matB <= inpB;
             inp_rdy <= False;
             out_rdy <= False;
         endmethod
 
-        method ActionValue#(MatType) getC if (out_rdy);
+        method ActionValue#(MatType) getC;
             //$display("hi");
-            inp_rdy <= True;
-            myMult.reset_mod;
+            // inp_rdy <= True;
             return out_mat;
+        endmethod
+
+        method Action reset_systole();
+            myMult.reset_mod;
+        endmethod
+
+        method Bool is_out_rdy();
+            return out_rdy;
         endmethod
     endmodule
 
@@ -197,9 +210,9 @@ package mat_mult_systolic;
             for (int i=0; i<`MAT_DIM; i=i+1) begin
                 if (cntr-i-`MAT_DIM-1 < `MAT_DIM) begin
                     out_stream[i] = pe[i][cntr-i-`MAT_DIM-1].getC();
-                    $display("\n", $time, "get_out:");
+                    /*$display("\n", $time, "get_out:");
                     fxptWrite(5, out_stream[i]);
-                    $display("\n");
+                    $display("\n");*/
                 end
             end
             return out_stream;
