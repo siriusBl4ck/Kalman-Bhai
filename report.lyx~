@@ -736,31 +736,32 @@ A few approaches come to mind in order to implement the Kalman Filter:
 \end_layout
 
 \begin_layout Itemize
-CPU Single Threaded: Would be implemented in C.
+CPU Single Threaded: Would be implemented in C/C++.
  It is easy to implement, and can be used as a baseline to compare implementatio
 ns
 \end_layout
 
 \begin_layout Itemize
-GPU: Theoretically this would be easily capable of such a workflow from
- the throughput and bitrate
+CPU Multithreaded: This approach also seems feasible, but there is limited
+ parallelism in the algorithm and typical Kalman filters are not large in
+ size
 \end_layout
 
 \begin_layout Itemize
-CPU Multithreaded: This approach also seems feasible, since typical Kalman
- filters are not large in size
+GPU: Theoretically this would be easily capable of speeding up matrix operations
+ but the cost of synchronisation and memory transfer is dominant for small
+ matrices
 \end_layout
 
 \begin_layout Itemize
-Custom Hardware: This would include an FPGA design.
- The merits of this could be cost, lower power consumption and could be
- ideal for deploying for low end low power systems.
+Custom Hardware for FPGA: The merits of this could be cost, lower power
+ consumption and could be ideal for deploying low-end low-power systems.
  Several application specific and general optimizations like fixed point
  could be made to drastically lower the latency of operations.
 \end_layout
 
 \begin_layout Standard
-We shall try three such approaches:
+We tried three of the above approaches:
 \end_layout
 
 \begin_layout Itemize
@@ -772,8 +773,8 @@ CPU Multithreading using OpenMP
 \end_layout
 
 \begin_layout Itemize
-Custom Hardware description using Bluespec SystemVerilog and using Synthesis
- on Vitis HLS
+Custom Hardware description using Bluespec SystemVerilog and using Vitis
+ HLS
 \end_layout
 
 \begin_layout Standard
@@ -788,8 +789,8 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename DFG.png
-	scale 60
+	filename dag.png
+	scale 50
 
 \end_inset
 
@@ -822,7 +823,9 @@ The direction of dataflow is downwards.
  residual equations (the tree on the left) is independent of the Covariance
  predictor and kalman gain calculator.
  Thus these can be parallelized.
- 
+ For the remainder of this report, we shall refer to the state predictor
+ and measurement residual of the DAG as the left branch and the covariance
+ predictor and kalman gain calculator as the right branch.
 \end_layout
 
 \begin_layout Part
@@ -834,7 +837,7 @@ Implementation and results
 \end_layout
 
 \begin_layout Standard
-A single threaded C implementation of Kalman filter was implemented.
+Single threaded Kalman filter was implemented in C.
  Profiling tools like gprof, Valgrind and google-preformance tools were
  used to analyze the C-implementation.
  gprof is a sampling based profiling tool.
@@ -891,7 +894,21 @@ Valgrind's analysis output
 
 \end_inset
 
+One would expect, matrix inverse to be costlier, but it is observed from
+ the graph that matrix multiplications take the largest amount of time.
+ This is because the number of matrix multiplication operations (10 matrix
+ multiplications) are significantly higher compared to matrix inversion
+ (only one matrix inversion).
+ 
+\end_layout
 
+\begin_layout Standard
+We can see that the Kalmangain_Calculator, Covariance_predictor, Covariance_Upda
+te have the maximum computational complexity.
+ These three functions should be parallelized for lower latencies, but since
+ the functions are dependent on each other - they have to be executed sequential
+ly.
+ 
 \end_layout
 
 \begin_layout Section*
@@ -899,49 +916,19 @@ Valgrind's analysis output
 \end_layout
 
 \begin_layout Standard
-We now try to implement the Kalman filter by having task parallelism using
- OpenMP.
+From the DAG in Figure 1, we try to exploit the parallelism offered by the
+ branches.
+ We used OpenMP to parallelise operations.
+ Our initial attempt was to parallelise Matrix*Matrix operations and Matrix*Vect
+or operations but the small sizes of the operands (6, 12) led to the synchronisa
+tion overheads being very significant.
+ We then tried to implement the Kalman filter by having task parallelism
+ using OpenMP.
  Task parallelism focuses on distributing tasks—concurrently performed by
- processes or threads—across different processors Based on the SFG and the
- Valgrind profiling result, we parallelize the following KalmanGain Calculator
- and Covariance Predictor as a single task State Predictor and Measurement
- Residual as a single task.
-\begin_inset Float figure
-placement H
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\align center
-\begin_inset Graphics
-	filename valgrind_output2.png
-	scale 60
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Valgrind profiling result
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-
-
+ processes or threads—across different processors.
+ Based on the SFG and the Valgrind profiling result, we parallelized the
+ KalmanGain Calculator and the Covariance Predictor in one task and the
+ State Predictor and Measurement Residual as another task.
 \begin_inset Newline newline
 \end_inset
 
@@ -951,7 +938,7 @@ Valgrind profiling result
 \begin_layout Standard
 The number of instructions for both implementations for each iteration is
  around the same ~420000 instructions.
- 
+ So there were no costs of memory due to parallelisation.
 \begin_inset Newline newline
 \end_inset
 
@@ -959,7 +946,7 @@ The number of instructions for both implementations for each iteration is
 \end_layout
 
 \begin_layout Standard
-When we time the implementation for 100 iterations: 
+When we timed the implementation for 100 iterations: 
 \end_layout
 
 \begin_layout Itemize
@@ -991,25 +978,24 @@ As we can see the task parallelized implementation is
 \end_layout
 
 \begin_layout Standard
-For custom hardware we decided to go with Bluespec SystemVerilog due to
- the following reasons:
+For custom hardware we decided to go with Bluespec SystemVerilog over Verilog
+ due to the following reasons:
 \end_layout
 
 \begin_layout Itemize
 Ease of use: Can directly map the task schedule to hardware description
- using bluespec's rule based approach, easier to write sophisticated state
+ using Bluespec's rule based approach, easier to write sophisticated state
  machines
 \end_layout
 
 \begin_layout Itemize
 More control: Closer to hardware description than Vitis HLS, more control
- over clock cycle counts and latency
+ over architecture, clock cycle counts and latency
 \end_layout
 
 \begin_layout Itemize
-Library support: We made use of the FixedPoint library which was readily
- available by default.
- In the entire bluespec implementation, we have used FixedPoint<16, 16>
+Library support: We made use of the FixedPoint library of Bluespec.
+ We have used the configuration FixedPoint<16, 16>
 \end_layout
 
 \begin_layout Standard
@@ -1019,11 +1005,20 @@ There were two major operations which had to be dealt with, namely matrix
  From the DAG in Figure 1, we can see that there are a large number of Matrix*Ma
 trix operations scheduled in series which is computed parallel to the Matrix*Vec
 tor operations.
- So we can afford to give Matrix*Vector more latency.
- Hence we went with just 2 vector dot product modules to compute the result
- for Matrix*Vector operations.
+ So we decided to use one systolic Matrix multiplier for all the Matrix*Matrix
+ operations.
+ We can afford to give Matrix*Vector more latency and hence we went with
+ a simple pipelined Vector Dot product module.
+ We went with 2 vector dot product modules because of the two parallel operation
+s in State Predictor function.
  We chose to directly add the elements in a single cycle for add operations
  between matrices and vectors.
+\end_layout
+
+\begin_layout Standard
+Additionally, our hardware is extensible for any size of inputs.
+ This flexibility is hard to achieve in Verilog and doesn't provide consistent
+ results in HLS.
 \end_layout
 
 \begin_layout Subsection*
@@ -1298,163 +1293,70 @@ We were able to get a single iteration Kalman filter outputs
 \begin_inset Newline newline
 \end_inset
 
-Yosys synthesis results:
-\begin_inset listings
-inline false
+A quick synthesis of the generated verilog in Vivado gave the following
+ results:
+\begin_inset Float figure
+placement H
+wide false
+sideways false
 status open
 
 \begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename vivado1.png
+	scale 60
 
- mkKalman                          1
-\end_layout
+\end_inset
 
-\begin_layout Plain Layout
-
-     mat_mult_systolic               1
-\end_layout
-
-\begin_layout Plain Layout
-
-       mk_pe                        36
-\end_layout
-
-\begin_layout Plain Layout
-
-     mk_mat_inv                      1
-\end_layout
-
-\begin_layout Plain Layout
 
 \end_layout
 
 \begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename vivado2.png
+	scale 45
 
-   Number of wires:              76388
+\end_inset
+
+
 \end_layout
 
 \begin_layout Plain Layout
-
-   Number of wire bits:         698618
-\end_layout
+\begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
-   Number of public wires:        7505
+Vivado Synthesis results of Bluespec Design
 \end_layout
 
-\begin_layout Plain Layout
+\end_inset
 
-   Number of public wire bits:  361532
-\end_layout
 
-\begin_layout Plain Layout
-
-   Number of memories:               0
-\end_layout
-
-\begin_layout Plain Layout
-
-   Number of memory bits:            0
-\end_layout
-
-\begin_layout Plain Layout
-
-   Number of processes:              0
-\end_layout
-
-\begin_layout Plain Layout
-
-   Number of cells:             135742
-\end_layout
-
-\begin_layout Plain Layout
-
-     BUFG                            1
-\end_layout
-
-\begin_layout Plain Layout
-
-     CARRY4                      11045
-\end_layout
-
-\begin_layout Plain Layout
-
-     DSP48E1                       232
-\end_layout
-
-\begin_layout Plain Layout
-
-     FDRE                        14483
-\end_layout
-
-\begin_layout Plain Layout
-
-     FDSE                           72
-\end_layout
-
-\begin_layout Plain Layout
-
-     IBUF                         1605
-\end_layout
-
-\begin_layout Plain Layout
-
-     INV                         22261
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT1                         5565
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT2                        10865
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT3                        10799
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT4                         4502
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT5                         2891
-\end_layout
-
-\begin_layout Plain Layout
-
-     LUT6                        25412
-\end_layout
-
-\begin_layout Plain Layout
-
-     MUXF7                       18303
-\end_layout
-
-\begin_layout Plain Layout
-
-     MUXF8                        6286
-\end_layout
-
-\begin_layout Plain Layout
-
-     OBUF                         1420
 \end_layout
 
 \begin_layout Plain Layout
 
 \end_layout
 
-\begin_layout Plain Layout
+\end_inset
 
-   Estimated number of LCs:      43604
-\end_layout
+This was for a clock of 7MHz.
+ Our negative slack is 22.248ns.
+ This implies our maximum clock frequency is 
+\begin_inset Formula 
+\[
+\frac{1}{\frac{1}{7\times10^{6}}-22.248\times10^{-9}}=8.29MHz
+\]
+
+\end_inset
+
+This means a maximum latency of 0.00002388 sec per set of outputs, which
+ is a speedup of 
+\begin_inset Formula 
+\[
+\frac{0.00014}{0.00002388}=5.8
+\]
 
 \end_inset
 
@@ -1466,10 +1368,11 @@ status open
 \end_layout
 
 \begin_layout Standard
-Synthesis using Vitis HLS was done based on the baseline C code.
- We used floating point operations here.
- For 6 state dimensions, 2 measurement dimesions and 6 input dimensions,
- Vitis produced the following results:
+The baseline C-code initially synthesized with minimal optimizations to
+ estimate the resource utilization of the baseline.
+ This was further optimized and was used in the synthesis of hardware using
+ Vitis HLS.
+ 
 \begin_inset Float figure
 placement H
 wide false
@@ -1480,7 +1383,7 @@ status open
 \align center
 \begin_inset Graphics
 	filename vitis_results.png
-	scale 50
+	scale 60
 
 \end_inset
 
@@ -1491,11 +1394,15 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Vitis results
+Baseline C synthesis results with minimal optimizations
 \end_layout
 
 \end_inset
 
+
+\end_layout
+
+\begin_layout Plain Layout
 
 \end_layout
 
@@ -1509,43 +1416,227 @@ C Synthesis Expected Latency: 415 cycles
 \end_layout
 
 \begin_layout Itemize
-C/RTL Cosimulation Latency: 369 cycles
+C/RTL Cosimulation Latency: 369 cycles 
 \end_layout
 
 \begin_layout Itemize
-Estimated frequency max based on C synthesis: 31.62 MHz 
+Estimated frequency max based on C synthesis: 31.62 MHz
 \end_layout
 
 \begin_layout Standard
-The above results were obtained with bare minimum optimizations and passed
- the test case.
- Various optimizations like unrolling, pipelining, software pipelining and
- parallelism were tried through DATAFLOW, PIPELINE, UNROLL, DEPENDENCE pragmas.
- Any further optimization resulted in dependency errors which we were unable
- to resolve in the given time.
+This alone provided a latency of 0.00001167 gives a 11.997x speedup.
+ Several optimizations were made after this.
+\end_layout
+
+\begin_layout Standard
+Fixed point operations with ap_fixed<16,16> were explored in the early stages
+ of the project.
+ Significant challenges were faced especially in the matrix inversion operation
+ because of the division operation.
+ Hence, floating point operations were used.
  
+\end_layout
+
+\begin_layout Standard
+The matrix and the vectors were initially implemented in BRAMs.
+ Since the number of access ports - read/write were just two, significant
+ number of cycles were spent in accessing the data.
+ This significantly reduced the hardware utilization efficiency and prevented
+ further unrolling.
+ To solve this problem, the array was completely partitioned into individual
+ registers.
+ The complete partitioning is viable for the dimensions we considered (6
+ state variables, 6 input variables and 2 measurement variables).
+ This allowed us to unroll to a very large extent, thereby providing a very
+ high speed-up.
+\end_layout
+
+\begin_layout Standard
+The addition and subtraction of matrices and vectors were completely unrolled.
+ Since matrix multiplication and division operations takes up significant
+ resources, they were partially unrolled (Unrolled by a factor of number
+ of columns).
+ 
+\end_layout
+
+\begin_layout Standard
+Functions are inlined to reduce the overhead while jumping between functions.
+ Loops were made Perfect or Semi-Perfect (inner loops always had fixed number
+ of iterations & only inner loop containing the body) to flatten them -
+ thereby reducing the enter & exit overhead (reduces number of clock cycles
+ by 2N where N is the number of iterations in the outer loop).
+ 
+\end_layout
+
+\begin_layout Standard
+Several design choices were made during the design of matrix inverse.
+ One such choice that was made after careful analysis was to add the rows
+ instead of exchange of rows when the pivot element is zero - This resulted
+ in couple of clock cycles.
+ 
+\end_layout
+
+\begin_layout Standard
+In our previous submission, we concentrated on reducing the number of clock
+ cycles in inverse operation.
+ In the last couple of days, our focus shifted towards other operations(addition
+ & subtraction of matrices) which resulted in drastic reduction in resources
+ and latency.
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename c_synth1.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename c_synth2.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename co-sim-tool.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+C-Synthesis result and RTL Co-Simulation Tool result
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+We were able to get the latency to 97 clock cyles with a 20 MHz clock, with
+ a maximum possible clock frequency of ~32 MHz.
+ This results in one set of outputs being produced at a minimum of 0.0000030312
+ sec, which is a speedup of
+\begin_inset Formula 
+\[
+\frac{0.00014}{0.0000030312}=46.186
+\]
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Part
 Conclusion
 \end_layout
 
+\begin_layout Section*
+1 Comparison of implementations
+\end_layout
+
 \begin_layout Standard
-One of the real-time applications for the Kalman filter is Simultaneous
- Localization in mobile robots.
- An extreme case of such an example would be Autonomous Race Cars where
- the frequency of operation would be nominally around 200 Hz {5ms} with
- the state, input, and measurement vector dimensions being around 12-15
- variables{x, y, pitch, roll, yaw, and their derivatives}.
- In such a case, a simple Single-threaded C implementation cannot be implemented
- because of the high latency associated with them - 0.2 ms based on our calculati
-ons{we considered lower-dimensional measurement and input matrices in our
- profiling} which is comparable.
- HLS, Bluespec, and Task-Parallelized implementations can be used.
+Apart from the C baseline, all three implementations are suitable for the
+ requirements of realtime control applications where a Kalman Filter could
+ be used (till 12x12 dimensions).
+ Across implementations however, we find that Vitis HLS provides the fastest
+ results, and is an ideal tool for such DSP applications.
+ Bluespec implementation offers more control, however it is extremely complex
+ and time consuming, and the results one gets may not be as fast unless
+ a lot of lower level optimizations are exploited.
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename pareto.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Pareto Optimality chart of implementations
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+2 Future scope
+\end_layout
+
+\begin_layout Standard
+There were several things we could not do due to lack of time and the immense
+ complexity of designs.
+\end_layout
+
+\begin_layout Itemize
+Analyse the implementations for even higher dimensions.
+ Higher dimensions are suitable for nonlinear control applications
+\end_layout
+
+\begin_layout Itemize
+Analyse the HLS design output and make improvements in the Bluespec code
+ based on it
+\end_layout
+
+\begin_layout Itemize
+Reduce the Bluespec resource utilization
 \end_layout
 
 \begin_layout Part
-Work distribution and links
+Work distribution and References
+\end_layout
+
+\begin_layout Section*
+Work Distribution
 \end_layout
 
 \begin_layout Standard
@@ -1575,7 +1666,7 @@ Bluespec (mat-mul, mat-inv, and other operations): Saurav
 \end_layout
 
 \begin_layout Itemize
-Bluespec (top module): Surya, Saurav
+Bluespec (top module): Saurav, Surya
 \end_layout
 
 \begin_layout Itemize
@@ -1588,6 +1679,68 @@ Vitis HLS: AMS, Surya
 
 \begin_layout Itemize
 Profiling: AMS
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-1"
+
+\end_inset
+
+ Amin Jarrah, Abdel-Karim Al-Tamimi and Tala Albashir, 
+\begin_inset Quotes eld
+\end_inset
+
+Optimized Parallel Implementation of Extended Kalman Filter Using FPGA
+\begin_inset Quotes erd
+\end_inset
+
+, Journal of Circuits, Systems, and Computers Vol.
+ 27, No.
+ 1 (2018)
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-2"
+
+\end_inset
+
+ C.R.
+ Lee, Z.
+ Salcic, 
+\begin_inset Quotes eld
+\end_inset
+
+High-performance FPGA-based implementation of Kalman filter
+\begin_inset Quotes erd
+\end_inset
+
+, Microprocessors and Microsystems 21 (1997) 257-265
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-3"
+
+\end_inset
+
+ Ashan's Blog http://ashanpeiris.blogspot.com/2015/08/digital-design-of-systolic-a
+rray.html
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-5"
+
+\end_inset
+
+ Vivado HLS Optimization Methodology Guide, by Xilinx ver.
+ 2018
 \end_layout
 
 \end_body

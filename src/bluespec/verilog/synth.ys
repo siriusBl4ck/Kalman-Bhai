@@ -1,4 +1,0 @@
-read_verilog mkKalman.v mk_mat_inv.v mat_mult_systolic.v mk_pe.v
-synth_xilinx -top mkKalman
-write_verilog synth.v
-

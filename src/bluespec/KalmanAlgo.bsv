@@ -614,10 +614,7 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	// // // //  State update rules
-	// (*mutually_exclusive="state_update1, measurement_residual1, measurement_residual2, store_temp, store_E"*)
-	// rule state_update1 (enable_SUa && enable_SU_CU && !enable_storeE && !enable_MR1 && !enable_MR2);
-	// (*descending_urgency = "measurement_residual1, measurement_residual2, state_update1"*)
+	//  State update rules
 	rule state_update1 (enable_SU_CU && enable_SUa);
 		$display($time, "state_update1");
 		
@@ -636,46 +633,7 @@ module mkKalman(Kalman_Ifc);
 		$write("\n");
 
 		xk_ready <= True;
-
-		
-
-		// vdot3.put_a(kk[su_cntri][su_cntrj]);
-		// vdot3.put_b(yk[su_cntrj]);
-		// enable_storeT <= True;
-
-		// if (su_cntrj == `MEASUREMENT_DIM-1) begin
-		// 	su_cntrj <= 0;
-		// 	vdot3.end_value(True);
-		// 	if (su_cntri == `STATE_DIM-1) begin
-		// 		su_cntri <= 0;
-		// 		// enable_SU_CU <= False;
-		// 		enable_SUa <= False;
-		// 	end
-		// 	else
-		// 		su_cntri <= su_cntri+1;
-		// end 
-		// else begin
-		// 	su_cntrj <= su_cntrj+1;
-		// 	vdot3.end_value(False);
-		// end
 	endrule
-
-	// rule store_temp (enable_storeT);
-	// 	$display($time, "store_temp");
-	// 	let temp <- vdot3.dot_result;
-	// 	fxptWrite(3, temp);
-	// 	$write("\n");
-	// 	let x = fxptAdd(xk[su2_cntr], temp);
-	// 	xk[su2_cntr] <= fxptTruncate(x);
-
-	// 	if (su2_cntr == `STATE_DIM-1) begin
-	// 		su2_cntr <= 0;
-	// 		xk_ready <= True;
-	// 		enable_storeT <= False;
-	// 	end 
-	// 	else
-	// 		su2_cntr <= su2_cntr+1;
-	// endrule
 
 	// //Cov update
 	rule cov_updater (enable_SU_CU);
@@ -872,34 +830,3 @@ endmodule
 
 
 endpackage
-
-	/*VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
-
-		if (CP_cntr == 3*`MAT_DIM+5) begin
-			CP_cntr <= 0;
-			enable_CP1 <= False;
-			enable_CP2 <= True;
-		end
-		else
-			CP_cntr <= CP_cntr+1;
-
-        for(int i=0; i<`MAT_DIM; i=i+1) begin
-            if ((CP_cntr-i < `MAT_DIM) &&(i<=CP_cntr)) begin
-				// pk*F.Transpose
-                inp_Astream[i] = pk[i][CP_cntr-i];
-                inp_Bstream[i] = F[i][CP_cntr-i];
-			end 
-		end
-
-		mult_mod.feed_inp_stream(inp_Astream, inp_Bstream);
-	endrule
-	int k = CP_cntr - i - `MAT_DIM - 7;*/
-        // for(int i=0; i<`MAT_DIM; i=i+1) begin
-        //     if ((CP_cntr-i < `MAT_DIM) &&(i<=CP_cntr)) begin
-		// 		// F*L1
-        //         inp_Astream[i] = F[i][CP_cntr-i];
-        //         inp_Bstream[i] = L1[CP_cntr-i][i];
-		// 	end 
-		// end
-
-		// mult_mod.feed_inp_stream(inp_Astream, inp_Bstream); 
