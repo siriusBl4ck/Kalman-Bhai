@@ -5,11 +5,10 @@ of the state of the system) based on measurements which can typically be noisy.
 ## A study of Hardware Acceleration of Kalman Filter
 
 To run baseC implementation
-1. basecode_time.c
-gcc basecode_time.c
+```gcc basecode_time.c```
 
-2. code_omp_time.c
-gcc -fopenmp code_omp_time.c
+To run openmp implementation
+```gcc -fopenmp code_omp_time.c```
 
 To compile and test bluespec files currently in the directory
 1. For pe, go to src/bluespec ```make pe```
