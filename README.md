@@ -13,7 +13,9 @@ To run openmp implementation
 To compile and test bluespec files currently in the directory
 1. For pe, go to src/bluespec ```make pe```
 2. For mat_mult, go to src/bluespec```make mat_mult```
-3. For KalmanAlgo, go to src/bluespec```make Kalman```
+3. For top module (KalmanAlgo), go to src/bluespec```make Kalman```
+
+```./a.out```
 
 For using profiling tools
 g++ -I . basecode_time.c -o basecode_output.out
