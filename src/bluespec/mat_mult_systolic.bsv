@@ -23,7 +23,7 @@ package mat_mult_systolic;
         Reg#(MatType) out_mat <- mkReg(replicate(replicate(unpack(0))));
         Reg#(MatType) matA <- mkReg(replicate(replicate(unpack(0)))), matB <- mkReg(replicate(replicate(unpack(0))));
         Reg#(int) rg_cntr <- mkReg(0);
-        Reg#(Bool) inp_rdy <- mkReg(False), out_rdy <- mkReg(False);
+        Reg#(Bool) inp_rdy <- mkReg(True), out_rdy <- mkReg(False);
 
         rule cntr (!inp_rdy);
             if (rg_cntr == 3*`MAT_DIM+5) begin

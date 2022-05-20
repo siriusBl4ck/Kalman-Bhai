@@ -6,6 +6,7 @@ import vector_dot::*;
 import total_mat_inv::*;
 import mat_mult_systolic::*;
 import FixedPoint::*;
+import ConfigReg::*;
 
 interface Kalman_Ifc;
 	method Action put_xk_uk (Vector#(`STATE_DIM, SysType) inp_xk, Vector#(`INPUT_DIM, SysType) inp_uk);
@@ -54,7 +55,7 @@ module mkKalman(Kalman_Ifc);
 	sysF[5][5] = fromRational(1, 1);
 
 	sysH[0][0] = fromRational(1, 1);
-	sysH[1][3] = fromRational(1, 1);
+	sysH[1][1] = fromRational(1, 1);
 
 
 	sysQ[0][0] = fromRational(1, 100);
@@ -76,13 +77,20 @@ module mkKalman(Kalman_Ifc);
 	sysQ[4][3] = fromRational(2, 100);
 	sysQ[4][4] = fromRational(4, 100);
 	sysQ[4][5] = fromRational(4, 100);
+
+	sysR[0][0] = fromRational(1, 1);
+	sysR[1][1] = fromRational(1, 1);
+
+
+	
 	// To put a constraint on resources only 2 vector dot modules are needed
-	VectorDot_ifc vdot1 <- mkVectorDot, vdot2 <- mkVectorDot;
+	VectorDot_ifc vdot1 <- mkVectorDot, vdot2 <- mkVectorDot, vdot3 <- mkVectorDot;
 	//Ifc_mat_mult_systolic mult_mod <- mat_mult_systolic;
 	Ifc_mat_imm mult_mod <- mkmat_imm;
 	Ifc_mat_inv inv_mod <- mk_mat_inv;
 
 	VecTypeSD xk <- replicateM(mkReg(defaultValue));
+	VecTypeSD next_xk <- replicateM(mkReg(defaultValue));
 	VecTypeMD yk <- replicateM(mkReg(defaultValue));
 	VecTypeMD zk <- replicateM(mkReg(defaultValue));
 	VecTypeID uk <- replicateM(mkReg(defaultValue));
@@ -96,7 +104,7 @@ module mkKalman(Kalman_Ifc);
 	VecTypeSD immM <- replicateM(mkReg(defaultValue)), immN <- replicateM(mkReg(defaultValue));
 	Reg#(int) sp1a_cntri <- mkReg(0), sp1a_cntrj <- mkReg(0), sp1b_cntri <- mkReg(0), sp1b_cntrj <- mkReg(0), sp2a_cntr <- mkReg(0), sp2b_cntr <- mkReg(0); /// to be reduced
 	
-	Reg#(Bool) enable_SP1a <- mkReg(False), enable_storeM <- mkReg(False), enable_SP1b <- mkReg(False), enable_storeN <- mkReg(False);
+	Reg#(Bool) enable_SP1a <- mkReg(False), enable_storeM <- mkConfigReg(False), enable_SP1b <- mkReg(False), enable_storeN <- mkReg(False);
 	Reg#(Bool) enable_sp2a <- mkReg(False), enable_sp2b <- mkReg(False);
 	Reg#(Bool) enable_storeL1 <- mkReg(False);
 
@@ -133,16 +141,23 @@ module mkKalman(Kalman_Ifc);
 	//Cov update vars
 	MatTypeSD immT1 <- replicateM(replicateM(mkReg(0))), immT2 <- replicateM(replicateM(mkReg(0)));
 
+	Reg#(Bool) mul_rst <- mkReg(False);
 
 
+	Reg#(Bool) inp_xk_uk_rdy <- mkReg(False);
+	Reg#(Bool) inp_pk_rdy <- mkReg(False);
+	Reg#(Bool) inp_zk_rdy <- mkReg(False);
 
 	// State Predictor (SP) rules
 	// This rule is using vector dot product module to compute for matrix*vector
 
-	(*conflict_free = "state_predictor1a, state_predictor1b, store_M, store_N"*)
-	(*mutually_exclusive="cov_predict1, cov_predict3, cov_updater2"*)
-	(*mutually_exclusive="kalmanGC1, kalmanGC2, kalmanGC3, kalmanGC4, kalmanGC5,  kalmanGC6"*)
-	(*mutually_exclusive="cov_updater2, cov_updater3"*)
+	(*conflict_free = "state_predictor1a, store_M, state_predictor1b, store_N"*) //, measurement_residual1"*)
+	// (*conflict_free = "store_M, store_E"*)
+
+	// (*mutually_exclusive="cov_predict1, cov_predict3, cov_updater2"*)
+	// (*mutually_exclusive="kalmanGC1, kalmanGC2, kalmanGC3, kalmanGC4, kalmanGC5,  kalmanGC6"*)
+	// (*mutually_exclusive="cov_updater2, cov_updater3, cov_predict1, cov_predict3"*)
+	
 	rule state_predictor1a (enable_SP1a);
 		$display($time, "state_predictor1a");
 		$write("sysF[%d][%d] ", sp1a_cntri, sp1a_cntrj);
@@ -172,7 +187,7 @@ module mkKalman(Kalman_Ifc);
 	endrule
 
 	rule store_M (enable_storeM && (!enable_sp2a));
-		$display($time, "storeM");
+		$display($time, "storeM %d", sp2a_cntr);
 		let za <- vdot1.dot_result;
 		$write("za ");
 		fxptWrite(3, za);
@@ -224,14 +239,17 @@ module mkKalman(Kalman_Ifc);
 	endrule
 	
 	rule store_N (enable_storeN && (!enable_sp2b));
+		$display($time, "storeN %d", sp2b_cntr);
 		let zb <- vdot2.dot_result;
 		immN[sp2b_cntr] <= zb;
-		$display($time, "storeN");
-		fxptWrite(5, zb);
+		$write("zb ");
+		fxptWrite(3, zb);
+		$write("\n");
 		
 		if (sp2b_cntr == `STATE_DIM-1) begin
 			sp2b_cntr <= 0;
 			enable_sp2b <= True;
+			enable_sp2a <= True;
 			enable_storeN <= False;
 			$display($time, "Completed storeN\n");
 			for (int i = 0; i < `STATE_DIM; i = i + 1) begin
@@ -247,7 +265,7 @@ module mkKalman(Kalman_Ifc);
 	rule state_predictor2 (enable_sp2a && enable_sp2b);
 		$display($time, "state_predictor2");
 		for (int i=0; i<`STATE_DIM; i=i+1)
-			xk[i] <= immM[i] + immN[i];
+			xk[i] <= fxptTruncate(fxptAdd(immM[i], immN[i]));
 
 		enable_sp2a <= False;
 		enable_sp2b <= False;
@@ -256,6 +274,8 @@ module mkKalman(Kalman_Ifc);
 
 
 	// Measurement Residual rules
+	(*mutually_exclusive="measurement_residual1, state_predictor1a"*)
+	(*conflict_free="measurement_residual1, store_E"*)
 	rule measurement_residual1 (enable_MR1);
 		$display($time, "measurement_residual1");
 		vdot1.put_a(sysH[mr1_cntri][mr1_cntrj]);
@@ -266,6 +286,7 @@ module mkKalman(Kalman_Ifc);
 			mr1_cntrj <= 0;
 			vdot1.end_value(True);
 			if (mr1_cntri == `MEASUREMENT_DIM-1) begin
+				$display("measurement residual sent");
 				mr1_cntri <= 0;
 				enable_MR1 <= False;
 			end
@@ -300,29 +321,36 @@ module mkKalman(Kalman_Ifc);
 		enable_MR2 <= False;
 		enable_SUa <= True;
 		yk_ready <= True;
+		// xk_ready <= True;
 	endrule
 	
 
 	//Cov predictor Rules
 	//REPLICATE THIS
 	(*conflict_free = "cov_predict1, store_L1"*)
-	rule cov_predict1 (enable_CP1 && !enable_CU3);
+	rule cov_predict1 (enable_CP1);
 		$display($time, "cov_predict1");
-		mult_mod.reset_systole();
-		MatType tempF = replicate(replicate(unpack(0)));
-		MatType temppk = replicate(replicate(unpack(0)));
-		
-		for(int i=0; i<`STATE_DIM; i=i+1)
-			for(int j=0; j<`STATE_DIM; j=j+1) begin
-				tempF[i][j] = sysF[j][i];
-				temppk[i][j] = pk[i][j];
-			end
+		if (!mul_rst) begin
+			mult_mod.reset_systole();
+			mul_rst <= True;
+		end
+		else begin
+			MatType tempF = replicate(replicate(unpack(0)));
+			MatType temppk = replicate(replicate(unpack(0)));
+			
+			for(int i=0; i<`STATE_DIM; i=i+1)
+				for(int j=0; j<`STATE_DIM; j=j+1) begin
+					tempF[i][j] = sysF[j][i];
+					temppk[i][j] = pk[i][j];
+				end
 
-		mult_mod.putAB(temppk, tempF);
+			mult_mod.putAB(temppk, tempF);
 
-		enable_CP1 <= False;
-		enable_storeL1 <= True;
-		//mult_mod.start;
+			enable_CP1 <= False;
+			enable_storeL1 <= True;
+			//mult_mod.start;
+			mul_rst <= False;
+		end
 	endrule
 
 	(*descending_urgency = "mult_mod_cntr, store_L1"*)
@@ -347,22 +375,28 @@ module mkKalman(Kalman_Ifc);
 	
 	rule cov_predict2 (enable_CP2);
 		$display($time, "cov_predict2");
-		mult_mod.reset_systole();
-		//VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
-		MatType tempF = replicate(replicate(unpack(0)));
-		MatType tempL1 = replicate(replicate(unpack(0)));
-		
-		for(int i=0; i<`STATE_DIM; i=i+1)
-			for(int j=0; j<`STATE_DIM; j=j+1) begin
-				tempF[i][j] = sysF[i][j];
-				tempL1[i][j] = immL1[i][j];
-			end
-		
-		mult_mod.putAB(tempF, tempL1);
+		if (!mul_rst) begin
+			mult_mod.reset_systole();
+			mul_rst <= True;
+		end
+		else begin
+			//VecType inp_Astream = replicate(0), inp_Bstream = replicate(0);
+			MatType tempF = replicate(replicate(unpack(0)));
+			MatType tempL1 = replicate(replicate(unpack(0)));
+			
+			for(int i=0; i<`STATE_DIM; i=i+1)
+				for(int j=0; j<`STATE_DIM; j=j+1) begin
+					tempF[i][j] = sysF[i][j];
+					tempL1[i][j] = immL1[i][j];
+				end
+			
+			mult_mod.putAB(tempF, tempL1);
 
-		enable_CP2 <= False;
-		enable_storeL2 <= True;
-		//mult_mod.start;
+			enable_CP2 <= False;
+			enable_storeL2 <= True;
+			//mult_mod.start;
+			mul_rst <= False;
+		end
 	endrule
 
 	rule store_L2 (enable_storeL2);
@@ -384,7 +418,7 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	rule cov_predict3 (enable_CP3 && !enable_CU2);
+	rule cov_predict3 (enable_CP3 && !enable_CP1 && !enable_storeL2);
 		$display($time, "cov_predict3");
 		for (int i=0; i<`STATE_DIM; i=i+1) begin
 			for (int j=0; j<`STATE_DIM; j=j+1) begin
@@ -400,10 +434,14 @@ module mkKalman(Kalman_Ifc);
 		enable_KG1 <= True;
 	endrule
 	
-	// kalmanGC rules
+	// // // kalmanGC rules
 	rule kalmanGC1 (enable_KG1);
 		$display($time, "kalmanGC1");
+		if (!mul_rst) begin
 		mult_mod.reset_systole();
+		mul_rst <= True;
+		end
+		else begin
 		MatType temppk = replicate(replicate(unpack(0)));
 		MatType tempHT = replicate(replicate(unpack(0)));
 		
@@ -422,11 +460,13 @@ module mkKalman(Kalman_Ifc);
 		enable_KG1 <= False;
 		enable_store_A <= True;
 		//mult_mod.start;
+		mul_rst <= False;
+		end
 	endrule
 
 	rule store_A (enable_store_A);
-		$display($time, "storeA");
 		if (mult_mod.is_out_rdy()) begin
+			$display($time, "storeA");
 			MatType out_stream <- mult_mod.getC();
 
 			for (int i=0; i<`STATE_DIM; i=i+1) begin
@@ -445,7 +485,11 @@ module mkKalman(Kalman_Ifc);
 
 	rule kalmanGC2 (enable_KG2);
 		$display($time, "kalmanGC2");
+		if (!mul_rst) begin
 		mult_mod.reset_systole();
+		mul_rst <= True;
+		end
+		else begin
 		MatType tempH = replicate(replicate(unpack(0)));
 		MatType tempA = replicate(replicate(unpack(0)));
 		
@@ -464,6 +508,8 @@ module mkKalman(Kalman_Ifc);
 		enable_KG2 <= False;
 		enable_store_C1 <= True;
 		//mult_mod.start;
+		mul_rst <= False;
+		end
 	endrule
 
 	rule store_C1 (enable_store_C1);
@@ -523,9 +569,13 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	rule kalmanGC6 (enable_KG6);
+	rule kalmanGC6 (enable_KG6 && !enable_KG3 && !enable_store_C1);
 		$display($time, "kalmanGC6");
+		if (!mul_rst) begin
 		mult_mod.reset_systole();
+		mul_rst <= True;
+		end
+		else begin
 		MatType tempA = replicate(replicate(unpack(0)));
 		MatType tempC1 = replicate(replicate(unpack(0)));
 		
@@ -544,6 +594,8 @@ module mkKalman(Kalman_Ifc);
 		enable_KG6 <= False;
 		enable_store_Kk <= True;
 		//mult_mod.start;
+		mul_rst <= False;
+		end
 	endrule
 
 	rule store_Kk (enable_store_Kk);
@@ -562,47 +614,77 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	// //  State update rules
-	rule state_update1 (enable_SUa && enable_SU_CU);
+	// // // //  State update rules
+	// (*mutually_exclusive="state_update1, measurement_residual1, measurement_residual2, store_temp, store_E"*)
+	// rule state_update1 (enable_SUa && enable_SU_CU && !enable_storeE && !enable_MR1 && !enable_MR2);
+	// (*descending_urgency = "measurement_residual1, measurement_residual2, state_update1"*)
+	rule state_update1 (enable_SU_CU && enable_SUa);
 		$display($time, "state_update1");
-		vdot1.put_a(kk[su_cntri][su_cntrj]);
-		vdot1.put_b(yk[su_cntrj]);
-		enable_storeT <= True;
-
-		if (su_cntrj == `MEASUREMENT_DIM-1) begin
-			su_cntrj <= 0;
-			vdot1.end_value(True);
-			if (su_cntri == `STATE_DIM-1) begin
-				su_cntri <= 0;
-				enable_SUa <= False;
+		
+		for (int i = 0; i < `STATE_DIM; i = i + 1) begin
+			SysType x = 0;
+			for (int j = 0; j < `MEASUREMENT_DIM; j = j + 1) begin
+				let p = fxptMult(kk[i][j], yk[j]);
+				SysType p1 = fxptTruncate(p);
+				let s = fxptAdd(x, p1);
+				x = fxptTruncate(s);
 			end
-			else
-				su_cntri <= su_cntri+1;
-		end 
-		else begin
-			su_cntrj <= su_cntrj+1;
-			vdot1.end_value(False);
+			next_xk[i] <= x;
+			fxptWrite(5, x);
+			$write(" ");
 		end
+		$write("\n");
+
+		xk_ready <= True;
+
+		
+
+		// vdot3.put_a(kk[su_cntri][su_cntrj]);
+		// vdot3.put_b(yk[su_cntrj]);
+		// enable_storeT <= True;
+
+		// if (su_cntrj == `MEASUREMENT_DIM-1) begin
+		// 	su_cntrj <= 0;
+		// 	vdot3.end_value(True);
+		// 	if (su_cntri == `STATE_DIM-1) begin
+		// 		su_cntri <= 0;
+		// 		// enable_SU_CU <= False;
+		// 		enable_SUa <= False;
+		// 	end
+		// 	else
+		// 		su_cntri <= su_cntri+1;
+		// end 
+		// else begin
+		// 	su_cntrj <= su_cntrj+1;
+		// 	vdot3.end_value(False);
+		// end
 	endrule
 
-	rule store_temp (enable_storeT);
-		$display($time, "store_temp");
-		let temp <- vdot1.dot_result;
-		xk[su2_cntr] <= xk[su2_cntr]+temp;
+	// rule store_temp (enable_storeT);
+	// 	$display($time, "store_temp");
+	// 	let temp <- vdot3.dot_result;
+	// 	fxptWrite(3, temp);
+	// 	$write("\n");
+	// 	let x = fxptAdd(xk[su2_cntr], temp);
+	// 	xk[su2_cntr] <= fxptTruncate(x);
 
-		if (su2_cntr == `STATE_DIM-1) begin
-			su2_cntr <= 0;
-			xk_ready <= True;
-			enable_storeT <= False;
-		end 
-		else
-			su2_cntr <= su2_cntr+1;
-	endrule
+	// 	if (su2_cntr == `STATE_DIM-1) begin
+	// 		su2_cntr <= 0;
+	// 		xk_ready <= True;
+	// 		enable_storeT <= False;
+	// 	end 
+	// 	else
+	// 		su2_cntr <= su2_cntr+1;
+	// endrule
 
 	// //Cov update
 	rule cov_updater (enable_SU_CU);
 		$display($time, "cov_updater");
+		if (!mul_rst) begin
 		mult_mod.reset_systole();
+		mul_rst <= True;
+		end
+		else begin
 		MatType tempkk = replicate(replicate(unpack(0)));
 		MatType tempH = replicate(replicate(unpack(0)));
 		
@@ -620,8 +702,9 @@ module mkKalman(Kalman_Ifc);
 
 		enable_SU_CU <= False;
 		enable_store_T1 <= True;
-
 		//mult_mod.start;
+		mul_rst <= False;
+		end
 	endrule
 
 	rule store_T1 (enable_store_T1);
@@ -640,8 +723,13 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 	
-	rule cov_updater2 (enable_CU2 && !enable_CP3);
+	rule cov_updater2 (enable_CU2);
 		$display($time, "cov_updater2");
+		if (!mul_rst) begin
+			mult_mod.reset_systole();
+			mul_rst <= True;
+		end
+		else begin
 		MatType tempT1 = replicate(replicate(unpack(0)));
 		MatType temppk = replicate(replicate(unpack(0)));
 		
@@ -655,6 +743,8 @@ module mkKalman(Kalman_Ifc);
 		enable_CU2 <= False;
 		enable_store_T2 <= True;
 		//mult_mod.start;
+		mul_rst <= False;
+		end
 	endrule
 
 	rule store_T2 (enable_store_T2);
@@ -673,18 +763,24 @@ module mkKalman(Kalman_Ifc);
 		end
 	endrule
 
-	rule cov_updater3 (enable_CU3 && !enable_CP1);
+	rule cov_updater3 (enable_CU3 && !enable_CP1 && !enable_CU2);
 		$display($time, "cov_updater3");
-		for(int i=0; i<`STATE_DIM; i=i+1)
-			for(int j=0; j<`STATE_DIM; j=j+1)
-				pk[i][j] <= pk[i][j]-immT2[i][j];
+		for(int i=0; i<`STATE_DIM; i=i+1) begin
+			for(int j=0; j<`STATE_DIM; j=j+1) begin
+				let p = fxptSub(pk[i][j], immT2[i][j]);
+				pk[i][j] <= fxptTruncate(p);
+				fxptWrite(5, p);
+				$write(" ");
+			end
+			$write("\n");
+		end
  
 		enable_CU3 <= False;
 		pk_ready <= True;
-	endrule	
+	endrule
 
 
-	method Action put_xk_uk (Vector#(`STATE_DIM, SysType) inp_xk, Vector#(`INPUT_DIM, SysType) inp_uk) if ((!enable_SP1a) && (!enable_SP1b));
+	method Action put_xk_uk (Vector#(`STATE_DIM, SysType) inp_xk, Vector#(`INPUT_DIM, SysType) inp_uk) if ((!enable_SP1a) && (!enable_SP1b) && !inp_xk_uk_rdy);
 		$display($time, "put_xk_uk");
 		for (int i = 0; i < `STATE_DIM; i = i + 1) begin
 			xk[i] <= inp_xk[i];
@@ -705,23 +801,23 @@ module mkKalman(Kalman_Ifc);
 			end
 			$write("\n");
 		end
-		
+		inp_xk_uk_rdy <= True;
 		enable_SP1a <= True;
 		enable_SP1b <= True;
 	endmethod
 
-	method Action put_pk (Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) inp_pk) if (!enable_CP1);
+	method Action put_pk (Vector#(`STATE_DIM, Vector#(`STATE_DIM, SysType)) inp_pk) if (!enable_CP1 && !inp_pk_rdy);
 		$display($time, "put_pk");
 		for (int i = 0; i < `STATE_DIM; i = i + 1) begin
 			for (int j = 0; j < `STATE_DIM; j = j + 1) begin
 				pk[i][j] <= inp_pk[i][j];
 			end
 		end
-		
+		inp_pk_rdy <= True;
 		enable_CP1 <= True;
 	endmethod
 
-	method Action put_zk (Vector#(`MEASUREMENT_DIM, SysType) inp_zk);
+	method Action put_zk (Vector#(`MEASUREMENT_DIM, SysType) inp_zk) if (!inp_zk_rdy);
 		$display("put_zk");
 		for (int i = 0; i < `MEASUREMENT_DIM; i = i + 1) begin
 			fxptWrite(3, inp_zk[i]);
@@ -729,6 +825,7 @@ module mkKalman(Kalman_Ifc);
 			zk[i] <= inp_zk[i];
 		end
 		
+		inp_zk_rdy <= True;
 		zk_valid <= True;
 	endmethod
 
@@ -757,7 +854,7 @@ module mkKalman(Kalman_Ifc);
 	method Vector#(`STATE_DIM, SysType) get_xk;
 		Vector#(`STATE_DIM, SysType) tmp_xk = replicate(unpack(0));
 		for (int i = 0; i < `STATE_DIM; i = i + 1) begin
-			tmp_xk[i] = xk[i];
+			tmp_xk[i] = next_xk[i];
 		end
 
 		return tmp_xk;

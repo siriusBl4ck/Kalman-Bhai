@@ -772,11 +772,8 @@ CPU Multithreading using OpenMP
 \end_layout
 
 \begin_layout Itemize
-Custom Hardware description using Bluespec SystemVerilog
-\end_layout
-
-\begin_layout Itemize
-Synthesis on Vitis HLS
+Custom Hardware description using Bluespec SystemVerilog and using Synthesis
+ on Vitis HLS
 \end_layout
 
 \begin_layout Standard
@@ -817,10 +814,15 @@ DAG for Kalman Iteration (direction of control flow is downwards)
 
 \end_inset
 
-From the given graph we can see that the state predictor and measurement
+The direction of dataflow is downwards.
+ At every iteration, the covariance matrix Pk and the state vector Xk are
+ the outputs of the system, with the measurement zk, input vector uk, state
+ vector Xk and covariance matrix Pk taken as inputs.
+ From the given graph we can see that the state predictor and measurement
  residual equations (the tree on the left) is independent of the Covariance
  predictor and kalman gain calculator.
  Thus these can be parallelized.
+ 
 \end_layout
 
 \begin_layout Part
@@ -832,34 +834,11 @@ Implementation and results
 \end_layout
 
 \begin_layout Standard
-A working C++ code implementation of Kalman filter which uses “Eigen” matrix
- library was implemented.
- The “Eigen” library is optimized for large matrices – but has huge overhead.
- But considering that the dimensions of matrices generally involved in the
- Kalman filters are less than 20 (It depends a lot on applications.
- But general use-cases like localization and sensor fusion in mobile robots
- have operations on matrices with dimensions less than 15) - we realize
- that overhead is way high for any optimization to be useful.
- Hence all the matrix operations (multiplication, inverses) were implemented
- in C directly (Single threaded).
- Inverse of matrix is implemented using Gauss-Jordan Elimination method.
- 
-\begin_inset Newline newline
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Profiling tools like gprof, Valgrind and google-preformance tools were used
- to analyze the C-implementation.
+A single threaded C implementation of Kalman filter was implemented.
+ Profiling tools like gprof, Valgrind and google-preformance tools were
+ used to analyze the C-implementation.
  gprof is a sampling based profiling tool.
- Since the execution of functions (that describe individual equations) was
- really fast and because of the low sampling frequency(100Hz) of gprof,
- no useful information was obtained through gprof tool.
- Google-perf tools were used with multiple sampling frequencies, but it
- never worked.
- 
+ gprof and google-performance tools did not give useful results.
 \begin_inset Newline newline
 \end_inset
 
@@ -867,78 +846,14 @@ Profiling tools like gprof, Valgrind and google-preformance tools were used
 \end_layout
 
 \begin_layout Standard
-Out of all three profiling tools - Valgrind gave the most accurate results.
- Valgrind runs the program in Valgrind virtual machine.
- Callgrind - Valgrind’s tool is used to profile the code.
- Since Valgrind is a simulated virtual machine, it gives the best accurate
- results but at the same time its extremely slow.
- Callgrind’s output is visualized through KCachegrind tool.
+Valgrind gave the most accurate results.
+ Callgrind - Valgrind’s tool is used to profile the code and the output
+ is visualized through KCachegrind tool.
 \begin_inset Newline newline
 \end_inset
 
-The test case considered consisted of a 12 dimensional state variable vector,
- 6 dimensional measurement vector and 6 dimensional input vector.
- We obtained these counts for number of instructions in both approaches:
-\end_layout
-
-\begin_layout Standard
-\align center
-\begin_inset Tabular
-<lyxtabular version="3" rows="2" columns="2">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-With Eigen
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-From scratch
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-2,315,849 instructions
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-569,774 instructions
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-As expected it has huge overhead.
- But considering the C-code needs to be implemented in Vitis HLS - we proceed
- our analysis with the custom-built version.
+The test case consisted of a 12 dimensional state variable vector, 6 dimensional
+ measurement vector and 6 dimensional input vector.
 \end_layout
 
 \begin_layout Standard
@@ -991,42 +906,6 @@ We now try to implement the Kalman filter by having task parallelism using
  Valgrind profiling result, we parallelize the following KalmanGain Calculator
  and Covariance Predictor as a single task State Predictor and Measurement
  Residual as a single task.
-\begin_inset Float figure
-placement H
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\align center
-\begin_inset Graphics
-	filename valgrind_output2.png
-	scale 60
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Valgrind profiling result
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-
-
 \begin_inset Newline newline
 \end_inset
 
@@ -1353,8 +1232,201 @@ The rules in the top module are based on the functions used in the C code
  and are scheduled according to the table above.
 \end_layout
 
+\begin_layout Subsection*
+3.4 Results
+\end_layout
+
+\begin_layout Standard
+We were able to get a single iteration Kalman filter outputs 
+\begin_inset Formula $x_{k}$
+\end_inset
+
+ and 
+\begin_inset Formula $P_{k}$
+\end_inset
+
+ every 198 clock cycles.
+ One could pipeline this workflow and keep extracting a new estimate for
+ 
+\begin_inset Formula $x_{k}$
+\end_inset
+
+ in around 150 cycles, however we could not do that due to lack of time.
+ 198 clock cycles is a significant improvement over the estimated 
+\begin_inset Formula $O(n^{3})$
+\end_inset
+
+ operations.
+ This is because of the use of parallelism and various optimal architectures
+ described above.
+\begin_inset Newline newline
+\end_inset
+
+Yosys synthesis results:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+ mkKalman                          1
+\end_layout
+
+\begin_layout Plain Layout
+
+     mat_mult_systolic               1
+\end_layout
+
+\begin_layout Plain Layout
+
+       mk_pe                        36
+\end_layout
+
+\begin_layout Plain Layout
+
+     mk_mat_inv                      1
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of wires:              76388
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of wire bits:         698618
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of public wires:        7505
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of public wire bits:  361532
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of memories:               0
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of memory bits:            0
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of processes:              0
+\end_layout
+
+\begin_layout Plain Layout
+
+   Number of cells:             135742
+\end_layout
+
+\begin_layout Plain Layout
+
+     BUFG                            1
+\end_layout
+
+\begin_layout Plain Layout
+
+     CARRY4                      11045
+\end_layout
+
+\begin_layout Plain Layout
+
+     DSP48E1                       232
+\end_layout
+
+\begin_layout Plain Layout
+
+     FDRE                        14483
+\end_layout
+
+\begin_layout Plain Layout
+
+     FDSE                           72
+\end_layout
+
+\begin_layout Plain Layout
+
+     IBUF                         1605
+\end_layout
+
+\begin_layout Plain Layout
+
+     INV                         22261
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT1                         5565
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT2                        10865
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT3                        10799
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT4                         4502
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT5                         2891
+\end_layout
+
+\begin_layout Plain Layout
+
+     LUT6                        25412
+\end_layout
+
+\begin_layout Plain Layout
+
+     MUXF7                       18303
+\end_layout
+
+\begin_layout Plain Layout
+
+     MUXF8                        6286
+\end_layout
+
+\begin_layout Plain Layout
+
+     OBUF                         1420
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+   Estimated number of LCs:      43604
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Section*
-4 Synthesis using Vitis HLS
+4 Hardware Design using Vitis HLS
 \end_layout
 
 \begin_layout Standard

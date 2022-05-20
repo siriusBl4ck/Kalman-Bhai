@@ -67,7 +67,7 @@ module mk_tb_top_module(Empty);
 
     rule finish;
         if (xk_done && pk_done) begin
-            $display("both done");
+            $display($time, "both done");
             $finish();
         end
     endrule

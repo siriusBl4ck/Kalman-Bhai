@@ -16,16 +16,16 @@ module mkVectorDot(VectorDot_ifc);
     //Stage 1 registers
     Reg#(Maybe#(SysType)) a <- mkReg(tagged Invalid);
     Reg#(Maybe#(SysType)) b <- mkReg(tagged Invalid);
-    Reg#(Bool) flag_stage1 <- mkReg(True);  
+    Reg#(Bool) flag_stage1 <- mkReg(False);  
 
     //Stage 2 registers
     Reg#(Maybe#(SysType)) prod <- mkReg(unpack(0));      
     Reg#(SysType) accum_sum    <- mkReg(unpack(0));
     Reg#(SysType) final_result <- mkReg(unpack(0));
-    Reg#(Bool) flag_stage2    <- mkReg(True);
+    Reg#(Bool) flag_stage2    <- mkReg(False);
 
     //Stage 3 registers
-    Reg#(Bool) flag_stage3 <- mkReg(True);
+    Reg#(Bool) flag_stage3 <- mkReg(False);
     Reg#(Bool) done        <- mkReg(False);
 
 
