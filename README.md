@@ -2,6 +2,8 @@
 Kalman Filter is an algorithm that produces estimates of state variables of a discrete data controlled system (thus an estimate
 of the state of the system) based on measurements which can typically be noisy.
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/uaDeUbCFaJg/0.jpg)](https://www.youtube.com/watch?v=uaDeUbCFaJg)
+
 ## A study of Hardware Acceleration of Kalman Filter
 
 To run baseC implementation
